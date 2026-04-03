@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proof Summary - AbstractRaft Inductive Invariants</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f8f9fa;
+    color: #333;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  .header {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .header h1 {
+    font-size: 1.5em;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+  }
+  .header .subtitle {
+    color: #6c757d;
+    font-size: 0.95em;
+  }
+  .stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 14px 20px;
+    min-width: 140px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .stat-card .label { color: #6c757d; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 1.5em; font-weight: 700; color: #1a1a2e; }
+  .stat-card.success .value { color: #198754; }
+  .stat-card.time .value { color: #6f42c1; }
+
+  .table-container {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    overflow-x: auto;
+  }
+  .table-container h2 {
+    font-size: 1.15em;
+    color: #1a1a2e;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+  }
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 2px solid #dee2e6;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  tr.success td:first-child { border-left: 3px solid #198754; }
+  tr.warning td:first-child { border-left: 3px solid #ffc107; }
+  tr:hover { background: #f8f9fa; }
+  a { color: #0d6efd; text-decoration: none; font-weight: 600; }
+  a:hover { text-decoration: underline; }
+  .footer {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    color: #6c757d;
+    font-size: 0.85em;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>AbstractRaft Inductive Invariant Proofs</h1>
+    <div class="subtitle">TLAPS proof status summary &middot; AbstractRaft_IndProofs_test.tla</div>
+    <div class="stats">
+      <div class="stat-card success">
+        <div class="label">Total Obligations</div>
+        <div class="value">1402/1402</div>
+      </div>
+      <div class="stat-card success">
+        <div class="label">Theorems Proved</div>
+        <div class="value">7/7</div>
+      </div>
+      <div class="stat-card time">
+        <div class="label">Total Prover Time</div>
+        <div class="value">26.0s+</div>
+      </div>
+      <div class="stat-card time">
+        <div class="label">Total Claude Code Time</div>
+        <div class="value">~37 min+</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <h2>Theorem Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Theorem</th>
+          <th>Invariant</th>
+          <th>Obligations</th>
+          <th>SMT</th>
+          <th>Zenon</th>
+          <th>TLAPM</th>
+          <th>Prover Time</th>
+          <th>Claude Time</th>
+          <th>Attempts</th>
+        </tr>
+      </thead>
+      <tbody>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L1.html">L_1</a></td>
+        <td>H_OnePrimaryPerTerm</td>
+        <td>139/139</td>
+        <td>47</td>
+        <td>2</td>
+        <td>90</td>
+        <td>11.9s</td>
+        <td>~8 min</td>
+        <td>8</td>
+      </tr>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L2.html">L_2</a></td>
+        <td>H_PrimaryHasOwnEntries</td>
+        <td>182/182</td>
+        <td>63</td>
+        <td>0</td>
+        <td>119</td>
+        <td>2.4s</td>
+        <td>~10 min</td>
+        <td>4</td>
+      </tr>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L3.html">L_3</a></td>
+        <td>H_LogMatching</td>
+        <td>21/21</td>
+        <td>7</td>
+        <td>0</td>
+        <td>14</td>
+        <td>1.3s</td>
+        <td>~4 min</td>
+        <td>2</td>
+      </tr>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L4.html">L_4</a></td>
+        <td>H_PrimaryTermGTELogTerm</td>
+        <td>95/95</td>
+        <td>37</td>
+        <td>0</td>
+        <td>58</td>
+        <td>1.7s</td>
+        <td>~15 min</td>
+        <td>9</td>
+      </tr>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L9.html">L_9</a></td>
+        <td>H_LeaderCompleteness</td>
+        <td>418/418</td>
+        <td>159</td>
+        <td>0</td>
+        <td>257</td>
+        <td>4.1s</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+      </tr>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L10.html">L_10</a></td>
+        <td>H_LaterLogsHaveEarlierCommitted</td>
+        <td>422/422</td>
+        <td>131</td>
+        <td>0</td>
+        <td>291</td>
+        <td>cached</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+      </tr>
+      <tr class="success">
+        <td><a href="proof_status_THEOREM_L11.html">L_11</a></td>
+        <td>H_CommittedEntryIsOnQuorum</td>
+        <td>125/125</td>
+        <td>42</td>
+        <td>0</td>
+        <td>83</td>
+        <td>4.6s</td>
+        <td>&mdash;</td>
+        <td>&mdash;</td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Generated from TLAPM log files. Prover time reflects cumulative solver time for the final successful run.
+    Claude Code time is approximate wall-clock time spent developing the proof.
+  </div>
+</body>
+</html>
