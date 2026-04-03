@@ -365,7 +365,7 @@ THEOREM L_4 == TypeOK /\ H_LogEntryImpliesSafeAtTerm /\ H_PrimaryTermGTELogTerm 
 
 \*** H_QuorumsSafeAtTerms
 THEOREM L_5 == TypeOK /\ H_QuorumsSafeAtTerms /\ Next => H_QuorumsSafeAtTerms'
-  <1>. USE A0,A1,A2,A3,A4,A5,A6
+  <1>. USE A0,A1,A2,A3,A4,A5,A6,A7
   \* (H_QuorumsSafeAtTerms,ClientRequestAction)
   <1>1. TypeOK /\ H_QuorumsSafeAtTerms /\ ClientRequestAction => H_QuorumsSafeAtTerms' BY DEF TypeOK,ClientRequestAction,ClientRequest,H_QuorumsSafeAtTerms
   \* (H_QuorumsSafeAtTerms,GetEntriesAction)
@@ -373,11 +373,90 @@ THEOREM L_5 == TypeOK /\ H_QuorumsSafeAtTerms /\ Next => H_QuorumsSafeAtTerms'
   \* (H_QuorumsSafeAtTerms,RollbackEntriesAction)
   <1>3. TypeOK /\ H_QuorumsSafeAtTerms /\ RollbackEntriesAction => H_QuorumsSafeAtTerms' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,H_QuorumsSafeAtTerms
   \* (H_QuorumsSafeAtTerms,BecomeLeaderAction)
-  <1>4. TypeOK /\ H_QuorumsSafeAtTerms /\ BecomeLeaderAction => H_QuorumsSafeAtTerms' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,H_QuorumsSafeAtTerms
+  <1>4. TypeOK /\ H_QuorumsSafeAtTerms /\ BecomeLeaderAction => H_QuorumsSafeAtTerms'
+    <2>. SUFFICES ASSUME TypeOK, H_QuorumsSafeAtTerms, BecomeLeaderAction
+         PROVE H_QuorumsSafeAtTerms'
+      OBVIOUS
+    <2>1. PICK leader \in Server, Q \in Quorums(Server) : BecomeLeader(leader, Q)
+      BY DEF BecomeLeaderAction
+    <2>2. currentTerm' = [s_1 \in Server |-> IF s_1 \in Q THEN currentTerm[leader] + 1 ELSE currentTerm[s_1]]
+      BY <2>1 DEF BecomeLeader
+    <2>3. state' = [s_1 \in Server |-> IF s_1 = leader THEN Primary ELSE IF s_1 \in Q THEN Secondary ELSE state[s_1]]
+      BY <2>1 DEF BecomeLeader
+    <2>4. leader \in Q
+      BY <2>1 DEF BecomeLeader
+    <2>5. \A v \in Q : currentTerm[v] < currentTerm[leader] + 1
+      BY <2>1 DEF BecomeLeader, CanVoteForOplog
+    <2>6. \A n \in Q : currentTerm'[n] = currentTerm[leader] + 1
+      BY <2>2
+    <2>7. Q \subseteq Server
+      BY DEF Quorums
+    \* Quorum intersection
+    <2>8. \A Q1, Q2 \in Quorums(Server) : Q1 \cap Q2 # {}
+      <3>1. IsFiniteSet(Server) BY A0
+      <3>2. SUFFICES ASSUME NEW Q1 \in Quorums(Server), NEW Q2 \in Quorums(Server) PROVE Q1 \cap Q2 # {} OBVIOUS
+      <3>3. Q1 \subseteq Server /\ Q2 \subseteq Server BY DEF Quorums
+      <3>4. IsFiniteSet(Q1) /\ IsFiniteSet(Q2) BY <3>1, <3>3, FS_Subset
+      <3>5. Cardinality(Q1) * 2 > Cardinality(Server) /\ Cardinality(Q2) * 2 > Cardinality(Server) BY DEF Quorums
+      <3>6. Cardinality(Server) \in Nat BY <3>1, FS_CardinalityType
+      <3>7. Cardinality(Q1) \in Nat /\ Cardinality(Q2) \in Nat BY <3>4, FS_CardinalityType
+      <3>8. Cardinality(Q1) + Cardinality(Q2) > Cardinality(Server) BY <3>5, <3>6, <3>7
+      <3>. QED BY <3>1, <3>3, <3>8, FS_MajoritiesIntersect
+    \* For any existing primary s, currentTerm[leader]+1 >= currentTerm[s]
+    <2>9. \A s \in Server : state[s] = Primary => currentTerm[leader] + 1 >= currentTerm[s]
+      <3>. SUFFICES ASSUME NEW s \in Server, state[s] = Primary PROVE currentTerm[leader] + 1 >= currentTerm[s] OBVIOUS
+      <3>1. PICK Qs \in Quorums(Server) : \A n \in Qs : currentTerm[n] >= currentTerm[s]
+        BY DEF H_QuorumsSafeAtTerms
+      <3>2. Q \cap Qs # {} BY <2>8
+      <3>3. PICK w \in Q \cap Qs : TRUE BY <3>2
+      <3>4. currentTerm[w] >= currentTerm[s] BY <3>3, <3>1
+      <3>5. currentTerm[w] < currentTerm[leader] + 1 BY <3>3, <2>5
+      <3>6. w \in Server BY <3>3, <2>7
+      <3>. QED BY <3>4, <3>5, <3>6 DEF TypeOK, Terms
+    \* Q witnesses the invariant for all primaries in post-state
+    <2>10. \A s \in Server : state'[s] = Primary =>
+           \A n \in Q : currentTerm'[n] >= currentTerm'[s]
+      <3>. SUFFICES ASSUME NEW s \in Server, state'[s] = Primary PROVE \A n \in Q : currentTerm'[n] >= currentTerm'[s] OBVIOUS
+      <3>1. CASE s = leader
+        BY <3>1, <2>4, <2>6 DEF TypeOK, Terms
+      <3>2. CASE s # leader
+        <4>1. s \notin Q /\ state[s] = Primary BY <3>2, <2>3
+        <4>2. currentTerm'[s] = currentTerm[s] BY <4>1, <2>2
+        <4>3. currentTerm[leader] + 1 >= currentTerm[s] BY <4>1, <2>9
+        <4>. QED BY <4>2, <4>3, <2>6 DEF TypeOK, Terms
+      <3>. QED BY <3>1, <3>2
+    <2>. QED BY <2>10 DEF H_QuorumsSafeAtTerms
   \* (H_QuorumsSafeAtTerms,CommitEntryAction)
   <1>5. TypeOK /\ H_QuorumsSafeAtTerms /\ CommitEntryAction => H_QuorumsSafeAtTerms' BY DEF TypeOK,CommitEntryAction,CommitEntry,H_QuorumsSafeAtTerms
   \* (H_QuorumsSafeAtTerms,UpdateTermsAction)
-  <1>6. TypeOK /\ H_QuorumsSafeAtTerms /\ UpdateTermsAction => H_QuorumsSafeAtTerms' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,H_QuorumsSafeAtTerms
+  <1>6. TypeOK /\ H_QuorumsSafeAtTerms /\ UpdateTermsAction => H_QuorumsSafeAtTerms'
+    <2>. SUFFICES ASSUME TypeOK, H_QuorumsSafeAtTerms,
+                        NEW i \in Server, NEW j \in Server, UpdateTerms(i, j),
+                        NEW s \in Server, state'[s] = Primary
+         PROVE \E Qw \in Quorums(Server) : \A n \in Qw : currentTerm'[n] >= currentTerm'[s]
+      BY DEF H_QuorumsSafeAtTerms, UpdateTermsAction
+    <2>1. currentTerm' = [currentTerm EXCEPT ![j] = currentTerm[i]]
+      BY DEF UpdateTerms, UpdateTermsExpr
+    <2>2. state' = [state EXCEPT ![j] = Secondary]
+      BY DEF UpdateTerms, UpdateTermsExpr
+    <2>3. s # j /\ state[s] = Primary
+      BY <2>2 DEF TypeOK
+    <2>4. currentTerm'[s] = currentTerm[s]
+      BY <2>1, <2>3 DEF TypeOK
+    <2>5. PICK Qs \in Quorums(Server) : \A n \in Qs : currentTerm[n] >= currentTerm[s]
+      BY <2>3 DEF H_QuorumsSafeAtTerms
+    <2>6. Qs \subseteq Server
+      BY DEF Quorums
+    <2>7. currentTerm[i] >= currentTerm[j]
+      BY DEF UpdateTerms, UpdateTermsExpr
+    <2>8. ASSUME NEW n \in Qs PROVE currentTerm'[n] >= currentTerm'[s]
+      <3>1. n \in Server BY <2>6
+      <3>2. CASE n = j
+        BY <3>1, <3>2, <2>1, <2>4, <2>5, <2>7, <2>8 DEF TypeOK, Terms
+      <3>3. CASE n # j
+        BY <3>1, <3>3, <2>1, <2>4, <2>5, <2>8 DEF TypeOK, Terms
+      <3>. QED BY <3>2, <3>3
+    <2>. QED BY <2>8
 <1>7. QED BY <1>1,<1>2,<1>3,<1>4,<1>5,<1>6 DEF Next
 
 
