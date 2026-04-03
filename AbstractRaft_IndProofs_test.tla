@@ -858,9 +858,131 @@ THEOREM L_6 == TypeOK /\ H_PrimaryHasOwnEntries /\ H_LogMatching /\ H_UniformLog
 THEOREM L_7 == TypeOK /\ H_PrimaryTermGTELogTerm /\ H_TermsMonotonic /\ Next => H_TermsMonotonic'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_TermsMonotonic,ClientRequestAction)
-  <1>1. TypeOK /\ H_PrimaryTermGTELogTerm /\ H_TermsMonotonic /\ ClientRequestAction => H_TermsMonotonic' BY DEF TypeOK,H_PrimaryTermGTELogTerm,ClientRequestAction,ClientRequest,H_TermsMonotonic
+  <1>1. TypeOK /\ H_PrimaryTermGTELogTerm /\ H_TermsMonotonic /\ ClientRequestAction => H_TermsMonotonic'
+    <2>. SUFFICES ASSUME TypeOK, H_PrimaryTermGTELogTerm, H_TermsMonotonic,
+                        NEW p \in Server, ClientRequest(p),
+                        NEW sv \in Server, NEW ii \in DOMAIN log'[sv], NEW jj \in DOMAIN log'[sv],
+                        ii <= jj
+         PROVE log'[sv][ii] <= log'[sv][jj]
+      BY DEF ClientRequestAction, H_TermsMonotonic
+    <2>1. log' = [log EXCEPT ![p] = Append(log[p], currentTerm[p])] BY DEF ClientRequest
+    <2>a. log'[p] = Append(log[p], currentTerm[p]) BY <2>1 DEF TypeOK
+    <2>b. \A idx \in 1..Len(log[p]) : log'[p][idx] = log[p][idx] BY <2>a DEF TypeOK
+    <2>c. log'[p][Len(log[p])+1] = currentTerm[p] BY <2>a DEF TypeOK
+    <2>d. DOMAIN log[p] = 1..Len(log[p]) BY DEF TypeOK
+    <2>e. DOMAIN log'[p] = 1..(Len(log[p])+1) BY <2>a DEF TypeOK
+    <2>2. CASE sv # p
+      BY <2>1, <2>2 DEF TypeOK, H_TermsMonotonic
+    <2>3. CASE sv = p
+      <3>1. CASE ii \in DOMAIN log[p] /\ jj \in DOMAIN log[p]
+        BY <2>b, <2>d, <3>1, <2>3 DEF H_TermsMonotonic
+      <3>2. CASE ii \in DOMAIN log[p] /\ jj \notin DOMAIN log[p]
+        \* jj = Len(log[p])+1, log'[p][jj] = currentTerm[p]
+        \* log'[p][ii] = log[p][ii] <= currentTerm[p] by H_PrimaryTermGTELogTerm
+        <4>1. jj = Len(log[p]) + 1 BY <2>e, <2>d, <3>2, <2>3 DEF TypeOK
+        <4>2. log'[p][jj] = currentTerm[p] BY <2>c, <4>1
+        <4>3. log'[p][ii] = log[p][ii] BY <2>b, <2>d, <3>2
+        <4>4. state[p] = Primary BY DEF ClientRequest
+        <4>5. log[p][ii] <= currentTerm[p]
+          BY <4>4, <3>2 DEF H_PrimaryTermGTELogTerm
+        <4>6. log'[sv][ii] <= log'[sv][jj]
+          BY <4>2, <4>3, <4>5, <2>3 DEF TypeOK, Terms
+        <4>. QED BY <4>6
+      <3>3. CASE ii \notin DOMAIN log[p] /\ jj \notin DOMAIN log[p]
+        \* Both equal Len(log[p])+1, so ii = jj
+        <4>1. ii = Len(log[p]) + 1 BY <2>e, <2>d, <3>3, <2>3 DEF TypeOK
+        <4>2. jj = Len(log[p]) + 1 BY <2>e, <2>d, <3>3, <2>3 DEF TypeOK
+        <4>3. ii = jj BY <4>1, <4>2
+        <4>4. log'[sv][ii] = log'[sv][jj] BY <4>3
+        <4>5. log'[p][ii] = currentTerm[p] BY <2>c, <4>1
+        <4>6. currentTerm[p] \in Nat BY DEF TypeOK, Terms
+        <4>. QED BY <4>4, <4>5, <4>6, <2>3
+      <3>4. CASE ii \notin DOMAIN log[p] /\ jj \in DOMAIN log[p]
+        \* ii = Len(log[p])+1 > jj, contradicts ii <= jj
+        <4>1. ii = Len(log[p]) + 1 BY <2>e, <2>d, <3>4, <2>3 DEF TypeOK
+        <4>2. jj \in 1..Len(log[p]) BY <3>4, <2>d
+        <4>. QED BY <4>1, <4>2 DEF TypeOK, Terms
+      <3>. QED BY <3>1, <3>2, <3>3, <3>4
+    <2>. QED BY <2>2, <2>3
   \* (H_TermsMonotonic,GetEntriesAction)
-  <1>2. TypeOK /\ H_TermsMonotonic /\ GetEntriesAction => H_TermsMonotonic' BY DEF TypeOK,GetEntriesAction,GetEntries,H_TermsMonotonic
+  <1>2. TypeOK /\ H_TermsMonotonic /\ GetEntriesAction => H_TermsMonotonic'
+    <2>. SUFFICES ASSUME TypeOK, H_TermsMonotonic,
+                        NEW r \in Server, NEW sender \in Server, GetEntries(r, sender),
+                        NEW sv \in Server, NEW ii \in DOMAIN log'[sv], NEW jj \in DOMAIN log'[sv],
+                        ii <= jj
+         PROVE log'[sv][ii] <= log'[sv][jj]
+      BY DEF GetEntriesAction, H_TermsMonotonic
+    <2>1. log' = [log EXCEPT ![r] = Append(log[r], log[sender][IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1])]
+      BY DEF GetEntries, Empty
+    <2>a. log'[r] = Append(log[r], log[sender][IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1])
+      BY <2>1 DEF TypeOK
+    <2>b. \A idx \in 1..Len(log[r]) : log'[r][idx] = log[r][idx] BY <2>a DEF TypeOK
+    <2>c. DOMAIN log[r] = 1..Len(log[r]) BY DEF TypeOK
+    <2>d. DOMAIN log'[r] = 1..(Len(log[r])+1) BY <2>a DEF TypeOK
+    <2>e. (IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1) = Len(log[r]) + 1
+      BY DEF TypeOK, Empty, Terms
+    <2>f. log'[r][Len(log[r])+1] = log[sender][Len(log[r]) + 1]
+      BY <2>a, <2>e DEF TypeOK
+    <2>g. Len(log[sender]) > Len(log[r]) BY DEF GetEntries
+    <2>h. ~Empty(log[r]) => log[sender][Len(log[r])] = log[r][Len(log[r])]
+      BY DEF GetEntries, Empty
+    <2>2. CASE sv # r
+      BY <2>1, <2>2 DEF TypeOK, H_TermsMonotonic
+    <2>3. CASE sv = r
+      <3>1. CASE ii \in DOMAIN log[r] /\ jj \in DOMAIN log[r]
+        BY <2>b, <2>c, <3>1, <2>3 DEF H_TermsMonotonic
+      <3>2. CASE ii \in DOMAIN log[r] /\ jj \notin DOMAIN log[r]
+        \* jj = Len(log[r])+1 = new entry. log'[r][jj] = log[sender][Len(log[r])+1].
+        \* Need: log[r][ii] <= log[sender][Len(log[r])+1].
+        \* By H_TermsMonotonic on r: log[r][ii] <= log[r][Len(log[r])] (ii <= Len(log[r])).
+        \* By logOk + H_TermsMonotonic on sender: log[r][Len(log[r])] = log[sender][Len(log[r])] <= log[sender][Len(log[r])+1].
+        <4>1. jj = Len(log[r]) + 1 BY <2>d, <2>c, <3>2, <2>3 DEF TypeOK
+        <4>2. log'[r][jj] = log[sender][Len(log[r]) + 1] BY <2>f, <4>1
+        <4>3. log'[r][ii] = log[r][ii] BY <2>b, <2>c, <3>2
+        <4>4. CASE Empty(log[r])
+          \* log[r] is empty, but ii \in DOMAIN log[r] contradicts Empty
+          BY <4>4, <3>2 DEF Empty, TypeOK
+        <4>5. CASE ~Empty(log[r])
+          <5>1. Len(log[r]) \in DOMAIN log[r]
+            BY <4>5 DEF Empty, TypeOK
+          <5>2. ii \in 1..Len(log[r]) BY <3>2, <2>c
+          <5>3. log[r][ii] <= log[r][Len(log[r])]
+            BY <5>2, <5>1 DEF H_TermsMonotonic, TypeOK, Terms
+          <5>4. log[sender][Len(log[r])] = log[r][Len(log[r])]
+            BY <2>h, <4>5
+          <5>5. Len(log[r]) >= 1
+            BY <4>5 DEF Empty, TypeOK, Terms
+          <5>6. Len(log[r]) \in DOMAIN log[sender]
+            BY <5>5, <2>g DEF TypeOK, Terms
+          <5>7. Len(log[r]) + 1 \in DOMAIN log[sender]
+            BY <2>g DEF TypeOK, Terms
+          <5>8. log[sender][Len(log[r])] <= log[sender][Len(log[r]) + 1]
+            BY <5>6, <5>7 DEF H_TermsMonotonic, TypeOK, Terms
+          <5>9. log[r][Len(log[r])] <= log[sender][Len(log[r]) + 1]
+            BY <5>4, <5>8 DEF TypeOK, Terms
+          <5>10. log[r][ii] \in Nat /\ log[r][Len(log[r])] \in Nat /\ log[sender][Len(log[r]) + 1] \in Nat
+            BY <5>2, <5>1, <5>7 DEF TypeOK, Terms
+          <5>11. log[r][ii] <= log[sender][Len(log[r]) + 1]
+            BY <5>3, <5>9, <5>10
+          <5>12. log'[sv][ii] <= log'[sv][jj]
+            BY <4>3, <4>2, <5>11, <2>3 DEF TypeOK, Terms
+          <5>. QED BY <5>12
+        <4>. QED BY <4>4, <4>5
+      <3>3. CASE ii \notin DOMAIN log[r] /\ jj \notin DOMAIN log[r]
+        <4>1. ii = Len(log[r]) + 1 BY <2>d, <2>c, <3>3, <2>3 DEF TypeOK
+        <4>2. jj = Len(log[r]) + 1 BY <2>d, <2>c, <3>3, <2>3 DEF TypeOK
+        <4>3. ii = jj BY <4>1, <4>2
+        <4>4. log'[sv][ii] = log'[sv][jj] BY <4>3
+        <4>5. log'[r][ii] = log[sender][Len(log[r]) + 1] BY <2>f, <4>1
+        <4>6. log[sender][Len(log[r]) + 1] \in Nat
+          BY <2>g DEF TypeOK, Terms
+        <4>. QED BY <4>4, <4>5, <4>6, <2>3
+      <3>4. CASE ii \notin DOMAIN log[r] /\ jj \in DOMAIN log[r]
+        <4>1. ii = Len(log[r]) + 1 BY <2>d, <2>c, <3>4, <2>3 DEF TypeOK
+        <4>2. jj \in 1..Len(log[r]) BY <3>4, <2>c
+        <4>. QED BY <4>1, <4>2 DEF TypeOK, Terms
+      <3>. QED BY <3>1, <3>2, <3>3, <3>4
+    <2>. QED BY <2>2, <2>3
   \* (H_TermsMonotonic,RollbackEntriesAction)
   <1>3. TypeOK /\ H_TermsMonotonic /\ RollbackEntriesAction => H_TermsMonotonic' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,H_TermsMonotonic
   \* (H_TermsMonotonic,BecomeLeaderAction)
