@@ -9,7 +9,7 @@ You can invoke the TLA+ proof system (TLAPS) to check correctness of a proof obl
 
 You can run the tools a few time to understand the output format which returns status about the obligations proven or failed. you can also use the `--stretch` flag to control the time spent on checking the proof if needed to expand timeouts. In general, try not to push stretch to values higher than 3, trying to rely on decomposition instead when possible.
 
-Also, whenever you run the tlapm tool, try to record its output durably to a file somewhere, so that if you need to grep for failures/status info, you don't need to re-run the tool again. In addition, BE CAREFUL to make sure you include the correct line numbers when checking a sub-obligation within a larger hierarchical proof. Don't leave out missing lines at the end. BE CAREFUL WITH THIS, so you don't accidentally mark a sub-goal of a proof as checked even though you left out some of it in your line ranges.
+Also, whenever you run the tlapm tool, try to record its output durably to a file somewhere, so that if you need to grep for failures/status info, you don't need to re-run the tool again. You can keep these log files in an `output` directory. In addition, BE CAREFUL to make sure you include the correct line numbers when checking a sub-obligation within a larger hierarchical proof. Don't leave out missing lines at the end. BE CAREFUL WITH THIS, so you don't accidentally mark a sub-goal of a proof as checked even though you left out some of it in your line ranges.
 
 IMPORTANT: Please do not use OMITTED to skip over proof obligations and leave them unproven.
 
@@ -22,3 +22,10 @@ IMPORTANT RULE 1: When decomposing a goal into a set of sub-goals, always make s
 IMPORTANT RULE 2: Try not to work on proving multiple sub-goals at the same time. Try to prove one sub-goal at a time, and then move on to the next one. For example, if a top-level goal has sub-goals <1>1, <1>2, <1>3, etc., try to prove <1>1 first, then <1>2, then <1>3, etc. Don't try to decompose multiple sub-goals at the same time.
 
 IMPORTANT RULE 3: Note that you cannot have proof steps at the same level with duplicate labels (e.g. two steps named <2>6a and <2>6a).
+
+## Recording Proof Stats
+
+As you go and prove each theorem, record metrics about how long it took to prove each obligation, and record this so that it can be rendered into a clean, embeddable HTML visualization that shows the proof tree structure. Please use a simple, clean, light (not dark mode) HTML visualization styling, and would be nice for proof tree structure to be collapsible. I also want to keep stats about how long Claude Code itself spent working on each proof. Please also generate a simple embeddable HTML table that includes a summary of the stats for all current theorems proved
+in `reports`.
+
+After you prove each theorem, generate a nice, HTML file that visualizes and reports the status of every obligation within this theorem, and just output it into proof_status_THEOREM_L<X>.html, where <X> is the theorem number. Store these in a `reports` sub-directory. And also make the visualization so that it just renders the code, but in a nice tree structured visualizationf format that reflects the proof structure hierarchy? And include metrics about how each obligation was proved (SMT, etc.) and how long the obligation took. That would be nice.
