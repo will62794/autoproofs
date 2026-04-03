@@ -253,21 +253,25 @@ THEOREM L_2 == TypeOK /\ H_OnePrimaryPerTerm /\ H_LogEntryImpliesSafeAtTerm /\ H
       <3>6. currentTerm[w] >= currentTerm[leader] + 1
         BY <3>4, <3>2
       <3>. QED BY <3>5, <3>6 DEF TypeOK, Terms
-    \* For any primary i in the post-state, H_PrimaryHasOwnEntries' holds
-    <2>8. SUFFICES ASSUME NEW i \in Server, NEW j \in Server, state'[i] = Primary
-         PROVE ~(\E k \in DOMAIN log'[j] : log'[j][k] = currentTerm'[i] /\ ~InLog(<<k, log'[j][k]>>, i)')
-      BY DEF H_PrimaryHasOwnEntries
-    <2>9. CASE i = leader
-      \* New leader has term currentTerm[leader]+1, no entries at that term exist
-      BY <2>2, <2>5, <2>7, <2>9 DEF InLog
-    <2>10. CASE i # leader
-      \* Existing primary: state'[i] = state[i] = Primary (i not in Q since members become Secondary)
+    \* For any primary i in the post-state: new leader case
+    <2>8. \A j \in Server : \A k \in DOMAIN log'[j] : log'[j][k] # currentTerm'[leader]
+      <3>1. leader \in Q BY <2>1 DEF BecomeLeader
+      <3>2. currentTerm'[leader] = currentTerm[leader] + 1 BY <3>1, <2>5
+      <3>. QED BY <3>2, <2>2, <2>7
+    \* For any existing primary (not the new leader)
+    <2>9. \A i \in Server : i # leader /\ state'[i] = Primary =>
+          (\A j \in Server : \A k \in DOMAIN log'[j] : log'[j][k] = currentTerm'[i] =>
+            (\E x \in DOMAIN log'[i] : x = k /\ log'[i][x] = log'[j][k]))
+      <3>. SUFFICES ASSUME NEW i \in Server, i # leader, state'[i] = Primary
+           PROVE \A j \in Server : \A k \in DOMAIN log'[j] : log'[j][k] = currentTerm'[i] =>
+                 (\E x \in DOMAIN log'[i] : x = k /\ log'[i][x] = log'[j][k])
+        OBVIOUS
       <3>1. i \notin Q /\ state[i] = Primary
-        BY <2>10, <2>4
+        BY <2>4
       <3>2. currentTerm'[i] = currentTerm[i]
         BY <3>1, <2>5
       <3>. QED BY <2>2, <3>1, <3>2 DEF H_PrimaryHasOwnEntries, InLog
-    <2>. QED BY <2>9, <2>10
+    <2>. QED BY <2>4, <2>8, <2>9 DEF H_PrimaryHasOwnEntries, InLog
   \* (H_PrimaryHasOwnEntries,CommitEntryAction)
   <1>5. TypeOK /\ H_PrimaryHasOwnEntries /\ CommitEntryAction => H_PrimaryHasOwnEntries' BY DEF TypeOK,CommitEntryAction,CommitEntry,H_PrimaryHasOwnEntries,InLog,ImmediatelyCommitted
   \* (H_PrimaryHasOwnEntries,UpdateTermsAction)
