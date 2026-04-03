@@ -1297,18 +1297,211 @@ THEOREM L_9 == TypeOK /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_CommittedE
 
 
 \*** H_LaterLogsHaveEarlierCommitted
-THEOREM L_10 == TypeOK /\ H_LeaderCompleteness /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_LogEntryImpliesSafeAtTerm /\ H_LaterLogsHaveEarlierCommitted /\ Next => H_LaterLogsHaveEarlierCommitted'
+THEOREM L_10 == TypeOK /\ H_LeaderCompleteness /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_LogMatching /\ H_LogEntryImpliesSafeAtTerm /\ H_LaterLogsHaveEarlierCommitted /\ Next => H_LaterLogsHaveEarlierCommitted'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_LaterLogsHaveEarlierCommitted,ClientRequestAction)
-  <1>1. TypeOK /\ H_LeaderCompleteness /\ H_LaterLogsHaveEarlierCommitted /\ ClientRequestAction => H_LaterLogsHaveEarlierCommitted' BY DEF TypeOK,H_LeaderCompleteness,ClientRequestAction,ClientRequest,H_LaterLogsHaveEarlierCommitted
+  <1>1. TypeOK /\ H_LeaderCompleteness /\ H_LaterLogsHaveEarlierCommitted /\ ClientRequestAction => H_LaterLogsHaveEarlierCommitted'
+    <2>. SUFFICES ASSUME TypeOK, H_LeaderCompleteness, H_LaterLogsHaveEarlierCommitted, ClientRequestAction,
+                        NEW s \in Server, NEW c \in immediatelyCommitted',
+                        NEW idx \in DOMAIN log'[s], log'[s][idx] > c[2]
+         PROVE /\ Len(log'[s]) >= c[1]
+               /\ log'[s][c[1]] = c[2]
+         BY DEF H_LaterLogsHaveEarlierCommitted
+    <2>1. PICK i \in Server : ClientRequest(i) BY DEF ClientRequestAction
+    <2>2. immediatelyCommitted' = immediatelyCommitted /\ c \in immediatelyCommitted BY <2>1 DEF ClientRequest
+    <2>3. c[1] >= 1 /\ c[1] \in Nat BY <2>2 DEF TypeOK, LogIndices
+    <2>4. log[i] \in Seq(Terms) BY DEF TypeOK
+    <2>5. CASE s # i
+      BY <2>1, <2>2, <2>5 DEF ClientRequest, H_LaterLogsHaveEarlierCommitted, TypeOK
+    <2>6. CASE s = i
+      <3>1. log'[i] = Append(log[i], currentTerm[i]) BY <2>1, <2>4 DEF ClientRequest, TypeOK
+      <3>2. state[i] = Primary BY <2>1 DEF ClientRequest
+      <3>3. CASE idx \in DOMAIN log[i]
+        <4>1. log[i][idx] > c[2] BY <2>6, <3>1, <3>3, <2>4
+        <4>2. Len(log[i]) >= c[1] /\ log[i][c[1]] = c[2]
+          BY <2>2, <4>1, <3>3 DEF H_LaterLogsHaveEarlierCommitted
+        <4>3. c[1] \in DOMAIN log[i] BY <2>3, <4>2, <2>4
+        <4>4. Len(log'[i]) = Len(log[i]) + 1 BY <3>1, <2>4
+        <4>5. Len(log[i]) \in Nat BY <2>4
+        <4>6. Len(log'[i]) >= c[1] BY <4>4, <4>2, <4>5, <2>3
+        <4>7. log'[i][c[1]] = log[i][c[1]] BY <3>1, <4>3, <2>4
+        <4>8. Len(log'[s]) >= c[1] BY <2>6, <4>6
+        <4>9. log'[s][c[1]] = c[2] BY <2>6, <4>7, <4>2
+        <4>. QED BY <4>8, <4>9
+      <3>4. CASE idx = Len(log[i]) + 1
+        <4>1. currentTerm[i] > c[2] BY <2>6, <3>1, <3>4, <2>4
+        <4>2. InLog(<<c[1], c[2]>>, i) BY <3>2, <4>1, <2>2 DEF H_LeaderCompleteness
+        <4>3. c[1] \in DOMAIN log[i] /\ log[i][c[1]] = c[2] BY <4>2 DEF InLog
+        <4>4. Len(log[i]) >= c[1] BY <4>3, <2>4
+        <4>5. Len(log'[i]) = Len(log[i]) + 1 BY <3>1, <2>4
+        <4>5a. Len(log[i]) \in Nat BY <2>4
+        <4>6. Len(log'[i]) >= c[1] BY <4>5, <4>4, <4>5a, <2>3
+        <4>7. log'[i][c[1]] = log[i][c[1]] BY <3>1, <4>3, <2>4
+        <4>8. Len(log'[s]) >= c[1] BY <2>6, <4>6
+        <4>9. log'[s][c[1]] = c[2] BY <2>6, <4>7, <4>3
+        <4>. QED BY <4>8, <4>9
+      <3>5. idx \in DOMAIN log[i] \/ idx = Len(log[i]) + 1
+        BY <2>6, <3>1, <2>4
+      <3>. QED BY <3>3, <3>4, <3>5
+    <2>. QED BY <2>5, <2>6
   \* (H_LaterLogsHaveEarlierCommitted,GetEntriesAction)
-  <1>2. TypeOK /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_LaterLogsHaveEarlierCommitted /\ GetEntriesAction => H_LaterLogsHaveEarlierCommitted' BY DEF TypeOK,H_TermsMonotonic,H_UniformLogEntries,GetEntriesAction,GetEntries,H_LaterLogsHaveEarlierCommitted
+  <1>2. TypeOK /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_LogMatching /\ H_LaterLogsHaveEarlierCommitted /\ GetEntriesAction => H_LaterLogsHaveEarlierCommitted'
+    <2>. SUFFICES ASSUME TypeOK, H_TermsMonotonic, H_UniformLogEntries, H_LogMatching, H_LaterLogsHaveEarlierCommitted, GetEntriesAction,
+                        NEW s \in Server, NEW c \in immediatelyCommitted',
+                        NEW idx \in DOMAIN log'[s], log'[s][idx] > c[2]
+         PROVE /\ Len(log'[s]) >= c[1]
+               /\ log'[s][c[1]] = c[2]
+         BY DEF H_LaterLogsHaveEarlierCommitted
+    <2>1. PICK i \in Server, j \in Server : GetEntries(i, j) BY DEF GetEntriesAction
+    <2>2. immediatelyCommitted' = immediatelyCommitted /\ c \in immediatelyCommitted BY <2>1 DEF GetEntries
+    <2>3. c[1] >= 1 /\ c[1] \in Nat BY <2>2 DEF TypeOK, LogIndices
+    <2>4. log[i] \in Seq(Terms) /\ log[j] \in Seq(Terms) BY DEF TypeOK
+    <2>5. CASE s # i
+      BY <2>1, <2>2, <2>5 DEF GetEntries, H_LaterLogsHaveEarlierCommitted, TypeOK
+    <2>6. CASE s = i
+      <3>. DEFINE newEntryIndex == IF Empty(log[i]) THEN 1 ELSE Len(log[i]) + 1
+      <3>0. log'[i] = Append(log[i], log[j][newEntryIndex]) BY <2>1, <2>4 DEF GetEntries, Empty, TypeOK
+      <3>0a. Len(log[j]) > Len(log[i]) BY <2>1 DEF GetEntries
+      <3>1. CASE idx \in DOMAIN log[i]
+        <4>1. log[i][idx] > c[2] BY <2>6, <3>0, <3>1, <2>4
+        <4>2. Len(log[i]) >= c[1] /\ log[i][c[1]] = c[2]
+          BY <2>2, <4>1, <3>1 DEF H_LaterLogsHaveEarlierCommitted
+        <4>3. c[1] \in DOMAIN log[i] BY <2>3, <4>2, <2>4
+        <4>4. Len(log'[i]) = Len(log[i]) + 1 BY <3>0, <2>4
+        <4>5. Len(log[i]) \in Nat BY <2>4
+        <4>6. Len(log'[i]) >= c[1] BY <4>4, <4>2, <4>5, <2>3
+        <4>7. log'[i][c[1]] = log[i][c[1]] BY <3>0, <4>3, <2>4
+        <4>8. Len(log'[s]) >= c[1] BY <2>6, <4>6
+        <4>9. log'[s][c[1]] = c[2] BY <2>6, <4>7, <4>2
+        <4>. QED BY <4>8, <4>9
+      <3>2. CASE idx \notin DOMAIN log[i]
+        <4>1. log[j][newEntryIndex] > c[2] BY <2>6, <3>0, <3>2, <2>4
+        <4>2. newEntryIndex \in DOMAIN log[j] BY <3>0a, <2>4 DEF Empty
+        <4>3. Len(log[j]) >= c[1] /\ log[j][c[1]] = c[2]
+          BY <2>2, <4>1, <4>2 DEF H_LaterLogsHaveEarlierCommitted
+        <4>4. c[1] \in DOMAIN log[j] BY <2>3, <4>3, <2>4
+        <4>5. newEntryIndex \in DOMAIN log[j] BY <4>2
+        \* By H_TermsMonotonic on j: c[1] < newEntryIndex.
+        <4>6. log[j] \in Seq(Terms) BY <2>4
+        <4>7. c[1] < newEntryIndex
+          BY <4>1, <4>3, <4>4, <4>5, <4>6 DEF H_TermsMonotonic, TypeOK, Terms
+        <4>8. CASE ~Empty(log[i])
+          <5>0. Len(log[i]) \in Nat BY <2>4
+          <5>1. c[1] <= Len(log[i]) BY <4>7, <4>8, <5>0, <2>3 DEF Empty
+          <5>2. c[1] \in DOMAIN log[i] BY <2>3, <5>1, <2>4
+          \* Log consistency check + H_LogMatching give prefix agreement.
+          <5>3. Len(log[i]) \in DOMAIN log[i] BY <4>8, <2>4 DEF Empty
+          <5>4. Len(log[i]) >= 1 BY <4>8, <2>4 DEF Empty
+          <5>4a. Len(log[j]) \in Nat BY <2>4
+          <5>4b. Len(log[i]) \in DOMAIN log[j] BY <3>0a, <5>0, <5>4, <5>4a, <2>4
+          <5>5. log[j][Len(log[i])] = log[i][Len(log[i])] BY <2>1, <4>8 DEF GetEntries, Empty
+          <5>6. Len(log[i]) \in DOMAIN log[j] BY <5>4b
+          \* Instantiate H_LogMatching: matching index Len(log[i]) in log[i] and log[j].
+          <5>6a. log[i][Len(log[i])] = log[j][Len(log[i])] BY <5>5
+          <5>6b. \E k \in DOMAIN log[j] : k = Len(log[i]) /\ log[i][Len(log[i])] = log[j][k]
+            BY <5>6, <5>6a
+          <5>6c. SubSeq(log[i], 1, Len(log[i])) = SubSeq(log[j], 1, Len(log[i]))
+            BY <5>3, <5>6b DEF H_LogMatching
+          <5>7. log[i][c[1]] = log[j][c[1]] BY <5>1, <5>6c, <5>2, <2>4, <2>3
+          <5>8. log'[i][c[1]] = log[i][c[1]] BY <3>0, <5>2, <2>4
+          <5>9. Len(log'[i]) = Len(log[i]) + 1 BY <3>0, <2>4
+          <5>10. Len(log'[i]) >= c[1] BY <5>9, <5>1, <5>0, <2>3
+          <5>11. Len(log'[s]) >= c[1] BY <2>6, <5>10
+          <5>12. log'[s][c[1]] = c[2] BY <2>6, <5>8, <5>7, <4>3
+          <5>. QED BY <5>11, <5>12
+        <4>9. CASE Empty(log[i])
+          BY <4>7, <4>9, <2>3 DEF Empty
+        <4>. QED BY <4>8, <4>9 DEF Empty
+      <3>3. idx \in DOMAIN log[i] \/ idx \notin DOMAIN log[i] OBVIOUS
+      <3>. QED BY <3>1, <3>2, <3>3
+    <2>. QED BY <2>5, <2>6
   \* (H_LaterLogsHaveEarlierCommitted,RollbackEntriesAction)
-  <1>3. TypeOK /\ H_LaterLogsHaveEarlierCommitted /\ RollbackEntriesAction => H_LaterLogsHaveEarlierCommitted' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,H_LaterLogsHaveEarlierCommitted
+  <1>3. TypeOK /\ H_TermsMonotonic /\ H_LaterLogsHaveEarlierCommitted /\ RollbackEntriesAction => H_LaterLogsHaveEarlierCommitted'
+    <2>. SUFFICES ASSUME TypeOK, H_TermsMonotonic, H_LaterLogsHaveEarlierCommitted, RollbackEntriesAction,
+                        NEW s \in Server, NEW c \in immediatelyCommitted',
+                        NEW idx \in DOMAIN log'[s], log'[s][idx] > c[2]
+         PROVE /\ Len(log'[s]) >= c[1]
+               /\ log'[s][c[1]] = c[2]
+         BY DEF H_LaterLogsHaveEarlierCommitted
+    <2>1. PICK i \in Server, j \in Server : RollbackEntries(i, j)
+         BY DEF RollbackEntriesAction
+    <2>2. immediatelyCommitted' = immediatelyCommitted BY <2>1 DEF RollbackEntries
+    <2>3. c[1] >= 1 /\ c[1] \in Nat BY <2>2 DEF TypeOK, LogIndices
+    <2>4. log[i] \in Seq(Terms) BY DEF TypeOK
+    <2>5. CASE s # i
+      BY <2>1, <2>2, <2>5 DEF RollbackEntries, H_LaterLogsHaveEarlierCommitted, TypeOK
+    <2>6. CASE s = i
+      <3>1. log'[i] = SubSeq(log[i], 1, Len(log[i])-1) BY <2>1, <2>4 DEF RollbackEntries, TypeOK
+      <3>2. c \in immediatelyCommitted BY <2>2
+      <3>3. Len(log[i]) > 0 BY <2>1 DEF RollbackEntries, CanRollback
+      \* idx is in DOMAIN SubSeq = 1..Len(log[i])-1, so idx \in DOMAIN log[i] too.
+      <3>4. idx \in DOMAIN log[i] /\ log[i][idx] > c[2]
+        BY <2>6, <3>1, <3>3, <2>4
+      <3>5. Len(log[i]) >= c[1] /\ log[i][c[1]] = c[2]
+        BY <3>2, <3>4 DEF H_LaterLogsHaveEarlierCommitted
+      \* By H_TermsMonotonic, idx > c[1].
+      <3>6. c[1] \in DOMAIN log[i] BY <2>3, <3>5, <2>4
+      <3>6a. Len(log[i]) \in Nat BY <2>4
+      <3>7. idx > c[1]
+        BY <3>4, <3>5, <3>6, <2>4 DEF H_TermsMonotonic, TypeOK, Terms
+      \* idx <= Len(log[i])-1, so c[1] < idx <= Len(log[i])-1.
+      <3>8. idx <= Len(log[i]) - 1 BY <2>6, <3>1, <3>3, <2>4
+      <3>9. idx \in Nat BY <3>4, <3>6a
+      <3>10. c[1] <= Len(log[i]) - 1 BY <3>7, <3>8, <3>9, <2>3, <3>6a
+      <3>11. Len(log'[i]) = Len(log[i]) - 1 BY <3>1, <3>3, <2>4
+      <3>12. Len(log'[i]) >= c[1] BY <3>11, <3>10, <3>6a, <2>3
+      <3>13. c[1] \in DOMAIN log'[i] BY <2>3, <3>10, <3>11, <3>3, <3>6a
+      <3>14. log'[i][c[1]] = log[i][c[1]] BY <3>1, <3>13, <3>3, <2>4
+      <3>15. Len(log'[s]) >= c[1] BY <2>6, <3>12
+      <3>16. log'[s][c[1]] = c[2] BY <2>6, <3>14, <3>5
+      <3>. QED BY <3>15, <3>16
+    <2>. QED BY <2>5, <2>6
   \* (H_LaterLogsHaveEarlierCommitted,BecomeLeaderAction)
   <1>4. TypeOK /\ H_LaterLogsHaveEarlierCommitted /\ BecomeLeaderAction => H_LaterLogsHaveEarlierCommitted' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,H_LaterLogsHaveEarlierCommitted
   \* (H_LaterLogsHaveEarlierCommitted,CommitEntryAction)
-  <1>5. TypeOK /\ H_LogEntryImpliesSafeAtTerm /\ H_LaterLogsHaveEarlierCommitted /\ CommitEntryAction => H_LaterLogsHaveEarlierCommitted' BY DEF TypeOK,H_LogEntryImpliesSafeAtTerm,CommitEntryAction,CommitEntry,H_LaterLogsHaveEarlierCommitted
+  <1>5. TypeOK /\ H_LogEntryImpliesSafeAtTerm /\ H_LaterLogsHaveEarlierCommitted /\ CommitEntryAction => H_LaterLogsHaveEarlierCommitted'
+    <2>. SUFFICES ASSUME TypeOK, H_LogEntryImpliesSafeAtTerm, H_LaterLogsHaveEarlierCommitted, CommitEntryAction,
+                        NEW s \in Server, NEW c \in immediatelyCommitted',
+                        NEW idx \in DOMAIN log'[s], log'[s][idx] > c[2]
+         PROVE /\ Len(log'[s]) >= c[1]
+               /\ log'[s][c[1]] = c[2]
+         BY DEF H_LaterLogsHaveEarlierCommitted
+    <2>1. PICK leader \in Server, commitQuorum \in Quorums(Server) : CommitEntry(leader, commitQuorum)
+         BY DEF CommitEntryAction
+    <2>2. UNCHANGED log BY <2>1 DEF CommitEntry
+    <2>3. CASE c \in immediatelyCommitted
+      BY <2>2, <2>3 DEF H_LaterLogsHaveEarlierCommitted, TypeOK
+    <2>4. CASE c = <<Len(log[leader]), currentTerm[leader]>> /\ c \notin immediatelyCommitted
+      \* Newly committed entry. Derive contradiction: no server can have entry > currentTerm[leader].
+      <3>1. commitQuorum \subseteq Server BY DEF Quorums
+      <3>2. \A q \in commitQuorum : currentTerm[q] = currentTerm[leader]
+        BY <2>1 DEF CommitEntry, ImmediatelyCommitted
+      <3>3. idx \in DOMAIN log[s] /\ log[s][idx] > currentTerm[leader] BY <2>2, <2>4 DEF TypeOK
+      <3>4. \E Q2 \in Quorums(Server) : \A n \in Q2 : currentTerm[n] >= log[s][idx]
+        BY <3>3 DEF H_LogEntryImpliesSafeAtTerm
+      <3>5. IsFiniteSet(Server) BY DEF TypeOK
+      \* Quorum intersection.
+      <3>6. PICK Q2 \in Quorums(Server) : \A n \in Q2 : currentTerm[n] >= log[s][idx]
+        BY <3>4
+      <3>7. Q2 \subseteq Server /\ commitQuorum \subseteq Server BY DEF Quorums
+      <3>8. IsFiniteSet(Q2) /\ IsFiniteSet(commitQuorum) BY <3>5, <3>7, FS_Subset
+      <3>9. Cardinality(Q2) \in Nat /\ Cardinality(commitQuorum) \in Nat /\ Cardinality(Server) \in Nat
+        BY <3>8, <3>5, FS_CardinalityType
+      <3>10. Cardinality(Q2) * 2 > Cardinality(Server) /\ Cardinality(commitQuorum) * 2 > Cardinality(Server)
+        BY <3>6, <2>1 DEF Quorums
+      <3>11. Cardinality(Q2) + Cardinality(commitQuorum) > Cardinality(Server)
+        BY <3>9, <3>10
+      <3>12. Q2 \cap commitQuorum # {}
+        BY <3>5, <3>7, <3>11, FS_MajoritiesIntersect
+      <3>13. PICK n \in Server : n \in Q2 /\ n \in commitQuorum
+        BY <3>12, <3>7
+      <3>14. currentTerm[n] >= log[s][idx] /\ currentTerm[n] = currentTerm[leader]
+        BY <3>13, <3>6, <3>2
+      <3>14a. idx \in DOMAIN log[s] BY <2>2, <3>3
+      <3>15. currentTerm[n] \in Nat /\ log[s][idx] \in Nat /\ currentTerm[leader] \in Nat
+        BY <3>13, <3>14a DEF TypeOK, Terms
+      <3>. QED BY <3>3, <3>14, <3>15
+    <2>. QED BY <2>1, <2>3, <2>4 DEF CommitEntry
   \* (H_LaterLogsHaveEarlierCommitted,UpdateTermsAction)
   <1>6. TypeOK /\ H_LaterLogsHaveEarlierCommitted /\ UpdateTermsAction => H_LaterLogsHaveEarlierCommitted' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,H_LaterLogsHaveEarlierCommitted
 <1>7. QED BY <1>1,<1>2,<1>3,<1>4,<1>5,<1>6 DEF Next
@@ -1318,17 +1511,86 @@ THEOREM L_10 == TypeOK /\ H_LeaderCompleteness /\ H_TermsMonotonic /\ H_UniformL
 THEOREM L_11 == TypeOK /\ H_LaterLogsHaveEarlierCommitted /\ H_CommittedEntryIsOnQuorum /\ Next => H_CommittedEntryIsOnQuorum'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_CommittedEntryIsOnQuorum,ClientRequestAction)
-  <1>1. TypeOK /\ H_CommittedEntryIsOnQuorum /\ ClientRequestAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,ClientRequestAction,ClientRequest,H_CommittedEntryIsOnQuorum
+  <1>1. TypeOK /\ H_CommittedEntryIsOnQuorum /\ ClientRequestAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,ClientRequestAction,ClientRequest,H_CommittedEntryIsOnQuorum,InLog
   \* (H_CommittedEntryIsOnQuorum,GetEntriesAction)
-  <1>2. TypeOK /\ H_CommittedEntryIsOnQuorum /\ GetEntriesAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,GetEntriesAction,GetEntries,H_CommittedEntryIsOnQuorum
+  <1>2. TypeOK /\ H_CommittedEntryIsOnQuorum /\ GetEntriesAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,GetEntriesAction,GetEntries,H_CommittedEntryIsOnQuorum,InLog
   \* (H_CommittedEntryIsOnQuorum,RollbackEntriesAction)
-  <1>3. TypeOK /\ H_LaterLogsHaveEarlierCommitted /\ H_CommittedEntryIsOnQuorum /\ RollbackEntriesAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,H_LaterLogsHaveEarlierCommitted,RollbackEntriesAction,RollbackEntries,H_CommittedEntryIsOnQuorum
+  <1>3. TypeOK /\ H_LaterLogsHaveEarlierCommitted /\ H_CommittedEntryIsOnQuorum /\ RollbackEntriesAction => H_CommittedEntryIsOnQuorum'
+    \* RollbackEntries: node i truncates last entry. For any committed c with quorum Q:
+    \* If i not in Q: Q still works.
+    \* If i in Q: need c to survive. If c[1] = Len(log[i]), then CanRollback contradicted.
+    <2>. SUFFICES ASSUME TypeOK, H_LaterLogsHaveEarlierCommitted, H_CommittedEntryIsOnQuorum, RollbackEntriesAction,
+                        NEW c \in immediatelyCommitted'
+         PROVE \E Q \in Quorums(Server) : \A n \in Q : InLog(<<c[1],c[2]>>, n)'
+         BY DEF H_CommittedEntryIsOnQuorum
+    <2>1. PICK i \in Server, j \in Server : RollbackEntries(i, j) BY DEF RollbackEntriesAction
+    <2>2. immediatelyCommitted' = immediatelyCommitted BY <2>1 DEF RollbackEntries
+    <2>3. c \in immediatelyCommitted BY <2>2
+    <2>4. log[i] \in Seq(Terms) /\ log[j] \in Seq(Terms) BY DEF TypeOK
+    <2>5. log'[i] = SubSeq(log[i], 1, Len(log[i])-1) BY <2>1, <2>4 DEF RollbackEntries, TypeOK
+    <2>6. Len(log[i]) > 0 BY <2>1 DEF RollbackEntries, CanRollback
+    \* Get the quorum witnessing c in the pre-state.
+    <2>7. PICK Q \in Quorums(Server) : \A n \in Q : InLog(<<c[1],c[2]>>, n)
+      BY <2>3 DEF H_CommittedEntryIsOnQuorum
+    \* Show the same Q still works in the post-state.
+    <2>8. SUFFICES \A n \in Q : InLog(<<c[1],c[2]>>, n)'
+      BY <2>7
+    <2>9. SUFFICES ASSUME NEW n \in Q, InLog(<<c[1],c[2]>>, n)
+         PROVE InLog(<<c[1],c[2]>>, n)'
+      BY <2>7
+    <2>10. CASE n # i
+      \* log'[n] = log[n], so InLog preserved.
+      BY <2>1, <2>9, <2>10 DEF RollbackEntries, InLog, TypeOK
+    <2>11. CASE n = i
+      \* Need to show c survives the truncation: c[1] < Len(log[i]).
+      <3>1. c[1] \in DOMAIN log[i] /\ log[i][c[1]] = c[2] BY <2>9, <2>11 DEF InLog
+      <3>2. c[1] >= 1 /\ c[1] \in Nat BY <2>3 DEF TypeOK, LogIndices
+      <3>3. Len(log[i]) \in Nat BY <2>4
+      \* CanRollback: LastTerm(log[i]) < LastTerm(log[j]).
+      <3>4. LastTerm(log[i]) < LastTerm(log[j]) BY <2>1 DEF RollbackEntries, CanRollback
+      \* H_LaterLogsHaveEarlierCommitted on j: since log[j] has entry > c[2] (via LastTerm),
+      \* log[j][c[1]] = c[2] and Len(log[j]) >= c[1].
+      <3>5. LastTerm(log[j]) > c[2] \/ c[1] < Len(log[i])
+        \* If c[1] = Len(log[i]), then c[2] = log[i][Len(log[i])] = LastTerm(log[i]), so LastTerm(log[j]) > c[2].
+        BY <3>1, <3>4, <2>6, <2>4, <3>3, <3>2 DEF LastTerm
+      <3>6. CASE c[1] < Len(log[i])
+        \* c survives SubSeq since c[1] < Len(log[i]), so c[1] <= Len(log[i])-1 = Len(log'[i]).
+        <4>1. c[1] \in DOMAIN log'[i] BY <3>6, <3>2, <3>3, <2>5, <2>4, <2>6
+        <4>2. log'[i][c[1]] = log[i][c[1]] BY <2>5, <4>1, <2>6, <2>4
+        <4>. QED BY <2>11, <4>1, <4>2, <3>1 DEF InLog
+      <3>7. CASE c[1] = Len(log[i])
+        \* c[2] = log[i][Len(log[i])] = LastTerm(log[i]) (since Len > 0).
+        <4>1. c[2] = LastTerm(log[i]) BY <3>7, <3>1, <2>6 DEF LastTerm
+        \* LastTerm(log[j]) > c[2], so log[j] has entry with term > c[2].
+        <4>2. LastTerm(log[j]) > c[2] BY <3>4, <4>1
+        \* By H_LaterLogsHaveEarlierCommitted on j:
+        <4>3. c[2] \in Nat BY <2>3 DEF TypeOK, LogIndices, Terms
+        <4>3a. Len(log[j]) > 0
+          BY <4>2, <4>3, <2>4 DEF LastTerm
+        <4>4. Len(log[j]) \in DOMAIN log[j] BY <4>3a, <2>4
+        <4>5. log[j][Len(log[j])] > c[2]
+          BY <4>2, <4>3a, <2>4 DEF LastTerm
+        <4>6. Len(log[j]) >= c[1] /\ log[j][c[1]] = c[2]
+          BY <4>4, <4>5, <2>3 DEF H_LaterLogsHaveEarlierCommitted
+        \* Now check CanRollback contradiction. c[1] = Len(log[i]) and log[j][c[1]] = c[2] = LastTerm(log[i]).
+        \* CanRollback requires: (Len(log[i]) > Len(log[j])) OR (Len(log[i]) <= Len(log[j]) AND LastTerm(log[i]) # LogTerm(j, Len(log[i]))).
+        \* Len(log[j]) >= c[1] = Len(log[i]), so first disjunct fails.
+        \* LogTerm(j, Len(log[i])) = log[j][Len(log[i])] = log[j][c[1]] = c[2] = LastTerm(log[i]).
+        \* So second disjunct fails too. Contradiction with CanRollback.
+        <4>7. Len(log[j]) >= Len(log[i]) BY <4>6, <3>7
+        <4>8. LogTerm(j, Len(log[i])) = c[2]
+          BY <3>7, <4>6, <2>6, <2>4 DEF LogTerm, GetTerm
+        <4>9. LastTerm(log[i]) = c[2] BY <4>1
+        <4>10. FALSE BY <2>1, <4>7, <4>8, <4>9, <2>6 DEF RollbackEntries, CanRollback
+        <4>. QED BY <4>10
+      <3>. QED BY <3>6, <3>7, <3>1, <3>3, <2>4
+    <2>. QED BY <2>10, <2>11
   \* (H_CommittedEntryIsOnQuorum,BecomeLeaderAction)
-  <1>4. TypeOK /\ H_CommittedEntryIsOnQuorum /\ BecomeLeaderAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,H_CommittedEntryIsOnQuorum
+  <1>4. TypeOK /\ H_CommittedEntryIsOnQuorum /\ BecomeLeaderAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,H_CommittedEntryIsOnQuorum,InLog
   \* (H_CommittedEntryIsOnQuorum,CommitEntryAction)
-  <1>5. TypeOK /\ H_CommittedEntryIsOnQuorum /\ CommitEntryAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,CommitEntryAction,CommitEntry,H_CommittedEntryIsOnQuorum
+  <1>5. TypeOK /\ H_CommittedEntryIsOnQuorum /\ CommitEntryAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,CommitEntryAction,CommitEntry,H_CommittedEntryIsOnQuorum,InLog,ImmediatelyCommitted
   \* (H_CommittedEntryIsOnQuorum,UpdateTermsAction)
-  <1>6. TypeOK /\ H_CommittedEntryIsOnQuorum /\ UpdateTermsAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,H_CommittedEntryIsOnQuorum
+  <1>6. TypeOK /\ H_CommittedEntryIsOnQuorum /\ UpdateTermsAction => H_CommittedEntryIsOnQuorum' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,H_CommittedEntryIsOnQuorum,InLog
 <1>7. QED BY <1>1,<1>2,<1>3,<1>4,<1>5,<1>6 DEF Next
 
 
