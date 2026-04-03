@@ -464,11 +464,387 @@ THEOREM L_5 == TypeOK /\ H_QuorumsSafeAtTerms /\ Next => H_QuorumsSafeAtTerms'
 THEOREM L_6 == TypeOK /\ H_PrimaryHasOwnEntries /\ H_LogMatching /\ H_UniformLogEntries /\ Next => H_UniformLogEntries'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_UniformLogEntries,ClientRequestAction)
-  <1>1. TypeOK /\ H_PrimaryHasOwnEntries /\ H_UniformLogEntries /\ ClientRequestAction => H_UniformLogEntries' BY DEF TypeOK,H_PrimaryHasOwnEntries,ClientRequestAction,ClientRequest,H_UniformLogEntries
+  <1>1. TypeOK /\ H_PrimaryHasOwnEntries /\ H_UniformLogEntries /\ ClientRequestAction => H_UniformLogEntries'
+    <2>. SUFFICES ASSUME TypeOK, H_PrimaryHasOwnEntries, H_UniformLogEntries,
+                        NEW p \in Server, ClientRequest(p),
+                        NEW s \in Server, NEW t \in Server,
+                        NEW i \in DOMAIN log'[s],
+                        \A j \in DOMAIN log'[s] : j < i => log'[s][j] # log'[s][i],
+                        NEW k \in DOMAIN log'[t], log'[t][k] = log'[s][i]
+         PROVE ~(k < i)
+      BY DEF ClientRequestAction, H_UniformLogEntries
+    <2>1. log' = [log EXCEPT ![p] = Append(log[p], currentTerm[p])] BY DEF ClientRequest
+    <2>2. state[p] = Primary BY DEF ClientRequest
+    <2>3. \A j \in Server : \A idx \in DOMAIN log[j] : log[j][idx] = currentTerm[p] => idx \in DOMAIN log[p] /\ log[p][idx] = currentTerm[p]
+      BY <2>2 DEF H_PrimaryHasOwnEntries, InLog
+    \* Explicit Append properties
+    <2>a. log'[p] = Append(log[p], currentTerm[p])
+      BY <2>1 DEF TypeOK
+    <2>b. \A srv \in Server : srv # p => log'[srv] = log[srv]
+      BY <2>1 DEF TypeOK
+    <2>c. DOMAIN log'[p] = 1..(Len(log[p])+1)
+      BY <2>a DEF TypeOK
+    <2>d. \A idx \in 1..Len(log[p]) : log'[p][idx] = log[p][idx]
+      BY <2>a DEF TypeOK
+    <2>e. log'[p][Len(log[p])+1] = currentTerm[p]
+      BY <2>a DEF TypeOK
+    <2>f. DOMAIN log[p] = 1..Len(log[p])
+      BY DEF TypeOK
+    <2>6. CASE s # p /\ t # p
+      BY <2>b, <2>6 DEF H_UniformLogEntries
+    <2>7. CASE s = p /\ t # p
+      \* Explicit substitution of s=p into SUFFICES assumptions
+      <3>a. log'[t][k] = log'[p][i] BY <2>7
+      <3>b. \A j \in DOMAIN log'[p] : j < i => log'[p][j] # log'[p][i] BY <2>7
+      <3>1. CASE i \in DOMAIN log[p]
+        \* Old entry at index i in log[p]
+        <4>1. log'[p][i] = log[p][i] BY <2>d, <2>f, <3>1
+        <4>2. log'[t][k] = log[t][k] BY <2>b, <2>7
+        <4>3. k \in DOMAIN log[t] BY <2>b, <2>7
+        <4>4. log[t][k] = log[p][i]
+          BY <3>a, <4>1, <4>2
+        <4>5. \A j \in DOMAIN log[p] : j < i => log[p][j] # log[p][i]
+          <5>. SUFFICES ASSUME NEW j \in DOMAIN log[p], j < i PROVE log[p][j] # log[p][i] OBVIOUS
+          <5>1. j \in DOMAIN log'[p] BY <2>f, <2>c DEF TypeOK, Terms
+          <5>2. log'[p][j] = log[p][j] BY <2>d, <2>f
+          <5>3. log'[p][j] # log'[p][i] BY <3>b, <5>1
+          <5>. QED BY <5>2, <5>3, <4>1
+        <4>. QED BY <3>1, <4>4, <4>5, <4>3, <2>7 DEF H_UniformLogEntries
+      <3>2. CASE i \notin DOMAIN log[p]
+        \* New entry: i = Len(log[p])+1, log'[p][i] = currentTerm[p]
+        \* Contradiction via uniqueness + H_PrimaryHasOwnEntries
+        <4>1. i = Len(log[p]) + 1
+          BY <2>c, <2>f, <3>2, <2>7 DEF TypeOK
+        <4>2. log'[p][i] = currentTerm[p]
+          BY <2>e, <4>1
+        <4>3. log'[t][k] = log[t][k] BY <2>b, <2>7
+        <4>4. k \in DOMAIN log[t] BY <2>b, <2>7
+        <4>5. log[t][k] = currentTerm[p]
+          BY <3>a, <4>2, <4>3
+        <4>6. k \in DOMAIN log[p] /\ log[p][k] = currentTerm[p]
+          BY <4>5, <4>4, <2>3, <2>7
+        <4>7. log'[p][k] = log[p][k]
+          BY <4>6, <2>d, <2>f
+        <4>8. log'[p][k] = currentTerm[p]
+          BY <4>7, <4>6
+        <4>9. log'[p][k] = log'[p][i]
+          BY <4>8, <4>2
+        <4>10. k \in DOMAIN log'[p]
+          BY <4>6, <2>f, <2>c DEF TypeOK, Terms
+        <4>11. k < i => log'[p][k] # log'[p][i]
+          BY <4>10, <3>b
+        <4>. QED BY <4>9, <4>11
+      <3>. QED BY <3>1, <3>2
+    <2>8. CASE s # p /\ t = p
+      \* Explicit substitution of t=p into SUFFICES assumptions
+      <3>a. log'[s] = log[s] BY <2>b, <2>8
+      <3>b. log'[p][k] = log'[s][i] BY <2>8
+      <3>c. i \in DOMAIN log[s] BY <3>a
+      <3>d. \A j \in DOMAIN log[s] : j < i => log[s][j] # log[s][i] BY <3>a, <2>8
+      <3>2. CASE k \in DOMAIN log[p]
+        \* Old entry in log[p] at k
+        <4>1. log'[p][k] = log[p][k] BY <2>d, <2>f, <3>2
+        <4>2. log[p][k] = log[s][i] BY <4>1, <3>b, <3>a
+        <4>. QED BY <3>c, <4>2, <3>d, <3>2, <2>8 DEF H_UniformLogEntries
+      <3>3. CASE k \notin DOMAIN log[p]
+        \* k = Len(log[p])+1 (new entry). log'[p][k] = currentTerm[p].
+        \* log[s][i] = currentTerm[p]. By H_PrimaryHasOwnEntries: i \in DOMAIN log[p].
+        \* So i <= Len(log[p]) < k. ~(k < i).
+        <4>1. k = Len(log[p]) + 1
+          BY <2>c, <2>f, <3>3, <2>8 DEF TypeOK
+        <4>2. log'[p][k] = currentTerm[p] BY <2>e, <4>1
+        <4>3a. log'[s][i] = log[s][i] BY <3>a
+        <4>3b. log'[s][i] = currentTerm[p] BY <3>b, <4>2
+        <4>3. log[s][i] = currentTerm[p]
+          BY <4>3a, <4>3b
+        <4>4. i \in DOMAIN log[s] BY <3>c
+        <4>5. i \in DOMAIN log[p]
+          BY <4>3, <4>4, <2>3, <2>8
+        <4>6. i \in 1..Len(log[p])
+          BY <4>5, <2>f
+        <4>. QED BY <4>1, <4>6 DEF TypeOK, Terms
+      <3>. QED BY <3>2, <3>3
+    <2>9. CASE s = p /\ t = p
+      \* Explicit substitution: s=t=p, so log'[p][k] = log'[p][i]
+      <3>a. log'[p][k] = log'[p][i] BY <2>9
+      <3>b. \A j \in DOMAIN log'[p] : j < i => log'[p][j] # log'[p][i] BY <2>9
+      <3>1. CASE i \in DOMAIN log[p] /\ k \in DOMAIN log[p]
+        \* Both old entries
+        <4>1. log'[p][i] = log[p][i] BY <2>d, <2>f, <3>1
+        <4>2. log'[p][k] = log[p][k] BY <2>d, <2>f, <3>1
+        <4>3. log[p][k] = log[p][i] BY <4>1, <4>2, <3>a
+        <4>4. \A j \in DOMAIN log[p] : j < i => log[p][j] # log[p][i]
+          <5>. SUFFICES ASSUME NEW j \in DOMAIN log[p], j < i PROVE log[p][j] # log[p][i] OBVIOUS
+          <5>1. j \in DOMAIN log'[p] BY <2>f, <2>c DEF TypeOK, Terms
+          <5>2. log'[p][j] = log[p][j] BY <2>d, <2>f
+          <5>3. log'[p][j] # log'[p][i] BY <3>b, <5>1
+          <5>. QED BY <5>2, <5>3, <4>1
+        <4>. QED BY <3>1, <4>3, <4>4 DEF H_UniformLogEntries
+      <3>2. CASE i \in DOMAIN log[p] /\ k \notin DOMAIN log[p]
+        \* i old, k new. k = Len(log[p])+1 > i, so ~(k < i).
+        <4>1. k = Len(log[p]) + 1
+          BY <2>c, <2>f, <3>2, <2>9 DEF TypeOK
+        <4>2. i \in 1..Len(log[p])
+          BY <3>2, <2>f
+        <4>. QED BY <4>1, <4>2 DEF TypeOK, Terms
+      <3>3. CASE i \notin DOMAIN log[p] /\ k \in DOMAIN log[p]
+        \* i new, k old. Contradiction via uniqueness.
+        <4>1. log'[p][k] = log[p][k] BY <2>d, <2>f, <3>3
+        <4>2. i = Len(log[p]) + 1
+          BY <2>c, <2>f, <3>3, <2>9 DEF TypeOK
+        <4>3. log'[p][i] = currentTerm[p] BY <2>e, <4>2
+        <4>4. log'[p][k] = log'[p][i] BY <3>a
+        <4>5. k \in DOMAIN log'[p]
+          BY <3>3, <2>f, <2>c DEF TypeOK, Terms
+        <4>6. k < i => log'[p][k] # log'[p][i]
+          BY <4>5, <3>b
+        <4>. QED BY <4>4, <4>6
+      <3>4. CASE i \notin DOMAIN log[p] /\ k \notin DOMAIN log[p]
+        \* Both new: i = k = Len(log[p])+1, so i = k and ~(k < i).
+        <4>1. i = Len(log[p]) + 1
+          BY <2>c, <2>f, <3>4, <2>9 DEF TypeOK
+        <4>2. k = Len(log[p]) + 1
+          BY <2>c, <2>f, <3>4, <2>9 DEF TypeOK
+        <4>. QED BY <4>1, <4>2
+      <3>. QED BY <3>1, <3>2, <3>3, <3>4
+    <2>. QED BY <2>6, <2>7, <2>8, <2>9
   \* (H_UniformLogEntries,GetEntriesAction)
-  <1>2. TypeOK /\ H_LogMatching /\ H_UniformLogEntries /\ GetEntriesAction => H_UniformLogEntries' BY DEF TypeOK,H_LogMatching,GetEntriesAction,GetEntries,H_UniformLogEntries
+  <1>2. TypeOK /\ H_LogMatching /\ H_UniformLogEntries /\ GetEntriesAction => H_UniformLogEntries'
+    <2>. SUFFICES ASSUME TypeOK, H_LogMatching, H_UniformLogEntries,
+                        NEW r \in Server, NEW sender \in Server, GetEntries(r, sender),
+                        NEW s \in Server, NEW t \in Server,
+                        NEW i \in DOMAIN log'[s],
+                        \A j \in DOMAIN log'[s] : j < i => log'[s][j] # log'[s][i],
+                        NEW k \in DOMAIN log'[t], log'[t][k] = log'[s][i]
+         PROVE ~(k < i)
+      BY DEF GetEntriesAction, H_UniformLogEntries
+    \* Define newEntry for clarity
+    <2>0. LET newEntryIndex == IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1
+              newEntry == log[sender][newEntryIndex] IN
+           log' = [log EXCEPT ![r] = Append(log[r], newEntry)]
+      BY DEF GetEntries, Empty
+    <2>1. log' = [log EXCEPT ![r] = Append(log[r], log[sender][IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1])]
+      BY DEF GetEntries, Empty
+    \* Explicit Append properties for log'[r]
+    <2>a. log'[r] = Append(log[r], log[sender][IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1])
+      BY <2>1 DEF TypeOK
+    <2>b. \A srv \in Server : srv # r => log'[srv] = log[srv]
+      BY <2>1 DEF TypeOK
+    <2>c. DOMAIN log'[r] = 1..(Len(log[r])+1)
+      BY <2>a DEF TypeOK
+    <2>d. \A idx \in 1..Len(log[r]) : log'[r][idx] = log[r][idx]
+      BY <2>a DEF TypeOK
+    <2>e. log'[r][Len(log[r])+1] = log[sender][IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1]
+      BY <2>a DEF TypeOK
+    <2>f. DOMAIN log[r] = 1..Len(log[r])
+      BY DEF TypeOK
+    <2>g. Len(log[sender]) > Len(log[r])
+      BY DEF GetEntries
+    <2>h. ~Empty(log[r]) => log[sender][Len(log[r])] = log[r][Len(log[r])]
+      BY DEF GetEntries, Empty
+    \* Key: in both Empty and ~Empty cases, newEntryIndex = Len(log[r])+1 when not empty, = 1 when empty.
+    \* But Len(log[r])+1 = 1 when Empty(log[r]) (Len=0). So newEntryIndex = Len(log[r])+1 always? No.
+    \* When Empty: newEntryIndex=1, Len(log[r])=0, so Len(log[r])+1=1. Same!
+    <2>i. (IF Empty(log[r]) THEN 1 ELSE Len(log[r]) + 1) = Len(log[r]) + 1
+      BY DEF TypeOK, Empty, Terms
+    <2>5. CASE s # r /\ t # r
+      BY <2>b, <2>5 DEF H_UniformLogEntries
+    <2>6. CASE s = r /\ t # r
+      \* Explicit substitution of s=r
+      <3>a. log'[t][k] = log'[r][i] BY <2>6
+      <3>b. \A j \in DOMAIN log'[r] : j < i => log'[r][j] # log'[r][i] BY <2>6
+      <3>c. log'[t][k] = log[t][k] BY <2>b, <2>6
+      <3>d. k \in DOMAIN log[t] BY <2>b, <2>6
+      <3>1. CASE i \in DOMAIN log[r]
+        \* Old entry, use pre-state invariant
+        <4>1. log'[r][i] = log[r][i] BY <2>d, <2>f, <3>1
+        <4>2. log[t][k] = log[r][i] BY <3>a, <4>1, <3>c
+        <4>3. \A j \in DOMAIN log[r] : j < i => log[r][j] # log[r][i]
+          <5>. SUFFICES ASSUME NEW j \in DOMAIN log[r], j < i PROVE log[r][j] # log[r][i] OBVIOUS
+          <5>1. j \in DOMAIN log'[r] BY <2>f, <2>c DEF TypeOK, Terms
+          <5>2. log'[r][j] = log[r][j] BY <2>d, <2>f
+          <5>3. log'[r][j] # log'[r][i] BY <3>b, <5>1
+          <5>. QED BY <5>2, <5>3, <4>1
+        <4>. QED BY <3>1, <4>2, <4>3, <3>d, <2>6 DEF H_UniformLogEntries
+      <3>2. CASE i \notin DOMAIN log[r]
+        \* New entry at Len(log[r])+1.
+        <4>1. i = Len(log[r]) + 1
+          BY <2>c, <2>f, <3>2, <2>6 DEF TypeOK
+        <4>2. log'[r][i] = log[sender][Len(log[r]) + 1]
+          BY <2>e, <4>1, <2>i
+        \* Use H_UniformLogEntries on sender's log.
+        \* First establish uniqueness of log[sender][Len(log[r])+1] in sender's log.
+        <4>3. Len(log[r]) + 1 \in DOMAIN log[sender]
+          BY <2>g DEF TypeOK, Terms
+        <4>4. \A j \in DOMAIN log[sender] : j < Len(log[r]) + 1 => log[sender][j] # log[sender][Len(log[r]) + 1]
+          \* For j < Len(log[r])+1, j \in DOMAIN log[r]. log[r][j] = log[sender][j] by H_LogMatching.
+          \* And log[r][j] = log'[r][j] # log'[r][i] = log[sender][Len(log[r])+1].
+          <5>. SUFFICES ASSUME NEW j2 \in DOMAIN log[sender], j2 < Len(log[r]) + 1
+               PROVE log[sender][j2] # log[sender][Len(log[r]) + 1]
+            OBVIOUS
+          <5>1. j2 \in 1..Len(log[r])
+            BY DEF TypeOK, Terms
+          <5>2. j2 \in DOMAIN log[r]
+            BY <5>1, <2>f
+          <5>3. log'[r][j2] = log[r][j2]
+            BY <2>d, <5>1
+          <5>4. j2 \in DOMAIN log'[r]
+            BY <5>1, <2>c DEF TypeOK, Terms
+          <5>5. log'[r][j2] # log'[r][i]
+            BY <3>b, <5>4, <4>1 DEF TypeOK, Terms
+          <5>6. log[r][j2] # log[sender][Len(log[r]) + 1]
+            BY <5>3, <5>5, <4>2
+          \* Now need: log[sender][j2] = log[r][j2] (from H_LogMatching)
+          <5>7. CASE Empty(log[r])
+            \* Len(log[r])=0, j2 < 1, contradicts j2 >= 1
+            BY <5>7, <5>1 DEF Empty, TypeOK, Terms
+          <5>8. CASE ~Empty(log[r])
+            \* By logOk + H_LogMatching: SubSeq(log[r],1,Len(log[r])) = SubSeq(log[sender],1,Len(log[r]))
+            <6>1. log[sender][Len(log[r])] = log[r][Len(log[r])]
+              BY <2>h, <5>8
+            <6>2. Len(log[r]) \in DOMAIN log[r]
+              BY <5>8 DEF Empty, TypeOK
+            <6>3. Len(log[r]) \in DOMAIN log[sender]
+              BY <2>g DEF TypeOK, Terms
+            <6>4a. log[r][Len(log[r])] = log[sender][Len(log[r])]
+              BY <6>1
+            <6>4b. \E j3 \in DOMAIN log[sender] : Len(log[r]) = j3 /\ log[r][Len(log[r])] = log[sender][j3]
+              BY <6>3, <6>4a
+            <6>4. SubSeq(log[r], 1, Len(log[r])) = SubSeq(log[sender], 1, Len(log[r]))
+              BY <6>4b, <6>2 DEF H_LogMatching
+            <6>5. log[sender][j2] = log[r][j2]
+              BY <6>4, <5>1, <5>2 DEF TypeOK
+            <6>. QED BY <6>5, <5>6
+          <5>. QED BY <5>7, <5>8
+        <4>5. log[t][k] = log[sender][Len(log[r]) + 1]
+          BY <3>a, <4>2, <3>c
+        \* Apply H_UniformLogEntries on sender
+        <4>. QED BY <4>3, <4>4, <4>5, <3>d, <4>1 DEF H_UniformLogEntries
+      <3>. QED BY <3>1, <3>2
+    <2>7. CASE s # r /\ t = r
+      \* Explicit substitution of t=r
+      <3>a. log'[s] = log[s] BY <2>b, <2>7
+      <3>b. log'[r][k] = log'[s][i] BY <2>7
+      <3>c. i \in DOMAIN log[s] BY <3>a
+      <3>d. \A j \in DOMAIN log[s] : j < i => log[s][j] # log[s][i] BY <3>a, <2>7
+      <3>1. CASE k \in DOMAIN log[r]
+        \* Old entry at k
+        <4>1. log'[r][k] = log[r][k] BY <2>d, <2>f, <3>1
+        <4>2. log[r][k] = log[s][i] BY <4>1, <3>b, <3>a
+        <4>. QED BY <3>c, <4>2, <3>d, <3>1, <2>7 DEF H_UniformLogEntries
+      <3>2. CASE k \notin DOMAIN log[r]
+        \* New entry at k = Len(log[r])+1
+        <4>1. k = Len(log[r]) + 1
+          BY <2>c, <2>f, <3>2, <2>7 DEF TypeOK
+        <4>2. log'[r][k] = log[sender][Len(log[r]) + 1]
+          BY <2>e, <4>1, <2>i
+        <4>3a. log'[s][i] = log[s][i] BY <3>a
+        <4>3b. log'[s][i] = log[sender][Len(log[r]) + 1]
+          BY <3>b, <4>2
+        <4>3. log[s][i] = log[sender][Len(log[r]) + 1]
+          BY <4>3a, <4>3b
+        \* Apply H_UniformLogEntries with s=s, i=i, t=sender to get ~(Len(log[r])+1 < i) i.e. ~(k < i)
+        <4>4. Len(log[r]) + 1 \in DOMAIN log[sender]
+          BY <2>g DEF TypeOK, Terms
+        <4>. QED BY <3>c, <3>d, <4>3, <4>4, <4>1 DEF H_UniformLogEntries
+      <3>. QED BY <3>1, <3>2
+    <2>8. CASE s = r /\ t = r
+      \* Both s and t are r
+      <3>a. log'[r][k] = log'[r][i] BY <2>8
+      <3>b. \A j \in DOMAIN log'[r] : j < i => log'[r][j] # log'[r][i] BY <2>8
+      <3>1. CASE i \in DOMAIN log[r] /\ k \in DOMAIN log[r]
+        <4>1. log'[r][i] = log[r][i] BY <2>d, <2>f, <3>1
+        <4>2. log'[r][k] = log[r][k] BY <2>d, <2>f, <3>1
+        <4>3. log[r][k] = log[r][i] BY <4>1, <4>2, <3>a
+        <4>4. \A j \in DOMAIN log[r] : j < i => log[r][j] # log[r][i]
+          <5>. SUFFICES ASSUME NEW j \in DOMAIN log[r], j < i PROVE log[r][j] # log[r][i] OBVIOUS
+          <5>1. j \in DOMAIN log'[r] BY <2>f, <2>c DEF TypeOK, Terms
+          <5>2. log'[r][j] = log[r][j] BY <2>d, <2>f
+          <5>3. log'[r][j] # log'[r][i] BY <3>b, <5>1
+          <5>. QED BY <5>2, <5>3, <4>1
+        <4>. QED BY <3>1, <4>3, <4>4 DEF H_UniformLogEntries
+      <3>2. CASE i \in DOMAIN log[r] /\ k \notin DOMAIN log[r]
+        <4>1. k = Len(log[r]) + 1 BY <2>c, <2>f, <3>2, <2>8 DEF TypeOK
+        <4>2. i \in 1..Len(log[r]) BY <3>2, <2>f
+        <4>. QED BY <4>1, <4>2 DEF TypeOK, Terms
+      <3>3. CASE i \notin DOMAIN log[r] /\ k \in DOMAIN log[r]
+        \* Contradiction via uniqueness
+        <4>1. k \in DOMAIN log'[r] BY <3>3, <2>f, <2>c DEF TypeOK, Terms
+        <4>2. k < i => log'[r][k] # log'[r][i] BY <4>1, <3>b
+        <4>. QED BY <3>a, <4>2
+      <3>4. CASE i \notin DOMAIN log[r] /\ k \notin DOMAIN log[r]
+        <4>1. i = Len(log[r]) + 1 BY <2>c, <2>f, <3>4, <2>8 DEF TypeOK
+        <4>2. k = Len(log[r]) + 1 BY <2>c, <2>f, <3>4, <2>8 DEF TypeOK
+        <4>. QED BY <4>1, <4>2
+      <3>. QED BY <3>1, <3>2, <3>3, <3>4
+    <2>. QED BY <2>5, <2>6, <2>7, <2>8
   \* (H_UniformLogEntries,RollbackEntriesAction)
-  <1>3. TypeOK /\ H_UniformLogEntries /\ RollbackEntriesAction => H_UniformLogEntries' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,H_UniformLogEntries
+  <1>3. TypeOK /\ H_UniformLogEntries /\ RollbackEntriesAction => H_UniformLogEntries'
+    <2>. SUFFICES ASSUME TypeOK, H_UniformLogEntries,
+                        NEW r \in Server, NEW j \in Server, RollbackEntries(r, j),
+                        NEW s \in Server, NEW t \in Server,
+                        NEW i \in DOMAIN log'[s],
+                        \A jj \in DOMAIN log'[s] : jj < i => log'[s][jj] # log'[s][i],
+                        NEW k \in DOMAIN log'[t], log'[t][k] = log'[s][i]
+         PROVE ~(k < i)
+      BY DEF RollbackEntriesAction, H_UniformLogEntries
+    <2>1. log' = [log EXCEPT ![r] = SubSeq(log[r], 1, Len(log[r])-1)]
+      BY DEF RollbackEntries
+    <2>b. \A srv \in Server : srv # r => log'[srv] = log[srv]
+      BY <2>1 DEF TypeOK
+    \* SubSeq preserves all entries at their indices
+    <2>c. \A idx \in DOMAIN log'[r] : idx \in DOMAIN log[r] /\ log'[r][idx] = log[r][idx]
+      BY <2>1 DEF TypeOK
+    \* DOMAIN log'[r] \subseteq DOMAIN log[r], and any j < i where i \in DOMAIN log'[r]
+    \* is also in DOMAIN log'[r] (since DOMAIN log'[r] = 1..Len(log[r])-1)
+    <2>d. \A idx \in DOMAIN log'[r] : \A jj \in DOMAIN log[r] : jj < idx => jj \in DOMAIN log'[r]
+      BY <2>1 DEF TypeOK
+    <2>3. CASE s # r /\ t # r
+      BY <2>b, <2>3 DEF H_UniformLogEntries
+    <2>5. CASE s = r /\ t # r
+      \* Explicit substitution of s=r
+      <3>a. log'[t][k] = log'[r][i] BY <2>5
+      <3>b. \A jj \in DOMAIN log'[r] : jj < i => log'[r][jj] # log'[r][i] BY <2>5
+      <3>c. log'[t][k] = log[t][k] BY <2>b, <2>5
+      <3>d. k \in DOMAIN log[t] BY <2>b, <2>5
+      \* log'[r][i] = log[r][i] since i is in the SubSeq prefix
+      <3>1. i \in DOMAIN log[r] /\ log'[r][i] = log[r][i] BY <2>c, <2>5
+      <3>2. log[t][k] = log[r][i] BY <3>a, <3>1, <3>c
+      <3>3. \A jj \in DOMAIN log[r] : jj < i => log[r][jj] # log[r][i]
+        <4>. SUFFICES ASSUME NEW jj \in DOMAIN log[r], jj < i PROVE log[r][jj] # log[r][i] OBVIOUS
+        <4>0. i \in DOMAIN log'[r] BY <2>5
+        <4>1. jj \in DOMAIN log'[r]
+          BY <2>d, <4>0
+        <4>2. log'[r][jj] = log[r][jj] BY <2>c, <4>1
+        <4>3. log'[r][jj] # log'[r][i] BY <3>b, <4>1
+        <4>. QED BY <4>2, <4>3, <3>1
+      <3>. QED BY <3>1, <3>2, <3>3, <3>d, <2>5 DEF H_UniformLogEntries
+    <2>6. CASE s # r /\ t = r
+      \* Explicit substitution of t=r
+      <3>a. log'[s] = log[s] BY <2>b, <2>6
+      <3>b. log'[r][k] = log'[s][i] BY <2>6
+      <3>c. i \in DOMAIN log[s] BY <3>a
+      <3>d. \A jj \in DOMAIN log[s] : jj < i => log[s][jj] # log[s][i] BY <3>a, <2>6
+      \* k \in DOMAIN log'[r] => k \in DOMAIN log[r] and log'[r][k] = log[r][k]
+      <3>1. k \in DOMAIN log[r] /\ log'[r][k] = log[r][k] BY <2>c, <2>6
+      <3>2. log[r][k] = log[s][i] BY <3>1, <3>b, <3>a
+      <3>. QED BY <3>c, <3>2, <3>d, <3>1, <2>6 DEF H_UniformLogEntries
+    <2>7. CASE s = r /\ t = r
+      <3>a. log'[r][k] = log'[r][i] BY <2>7
+      <3>b. \A jj \in DOMAIN log'[r] : jj < i => log'[r][jj] # log'[r][i] BY <2>7
+      <3>1. i \in DOMAIN log[r] /\ log'[r][i] = log[r][i] BY <2>c, <2>7
+      <3>2. k \in DOMAIN log[r] /\ log'[r][k] = log[r][k] BY <2>c, <2>7
+      <3>3. log[r][k] = log[r][i] BY <3>1, <3>2, <3>a
+      <3>4. \A jj \in DOMAIN log[r] : jj < i => log[r][jj] # log[r][i]
+        <4>. SUFFICES ASSUME NEW jj \in DOMAIN log[r], jj < i PROVE log[r][jj] # log[r][i] OBVIOUS
+        <4>1. i \in DOMAIN log'[r] BY <2>7
+        <4>2. jj \in DOMAIN log'[r]
+          BY <2>d, <4>1
+        <4>3. log'[r][jj] = log[r][jj] BY <2>c, <4>2
+        <4>4. log'[r][jj] # log'[r][i] BY <3>b, <4>2
+        <4>. QED BY <4>3, <4>4, <3>1
+      <3>. QED BY <3>1, <3>2, <3>3, <3>4 DEF H_UniformLogEntries
+    <2>. QED BY <2>3, <2>5, <2>6, <2>7
   \* (H_UniformLogEntries,BecomeLeaderAction)
   <1>4. TypeOK /\ H_UniformLogEntries /\ BecomeLeaderAction => H_UniformLogEntries' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,H_UniformLogEntries
   \* (H_UniformLogEntries,CommitEntryAction)
