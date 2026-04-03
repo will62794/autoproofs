@@ -279,9 +279,9 @@ THEOREM L_2 == TypeOK /\ H_OnePrimaryPerTerm /\ H_LogEntryImpliesSafeAtTerm /\ H
 THEOREM L_3 == TypeOK /\ H_PrimaryHasOwnEntries /\ H_LogMatching /\ Next => H_LogMatching'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_LogMatching,ClientRequestAction)
-  <1>1. TypeOK /\ H_PrimaryHasOwnEntries /\ H_LogMatching /\ ClientRequestAction => H_LogMatching' BY DEF TypeOK,H_PrimaryHasOwnEntries,ClientRequestAction,ClientRequest,H_LogMatching
+  <1>1. TypeOK /\ H_PrimaryHasOwnEntries /\ H_LogMatching /\ ClientRequestAction => H_LogMatching' BY DEF TypeOK,H_PrimaryHasOwnEntries,ClientRequestAction,ClientRequest,H_LogMatching,InLog
   \* (H_LogMatching,GetEntriesAction)
-  <1>2. TypeOK /\ H_LogMatching /\ GetEntriesAction => H_LogMatching' BY DEF TypeOK,GetEntriesAction,GetEntries,H_LogMatching
+  <1>2. TypeOK /\ H_LogMatching /\ GetEntriesAction => H_LogMatching' BY DEF TypeOK,GetEntriesAction,GetEntries,H_LogMatching,Empty
   \* (H_LogMatching,RollbackEntriesAction)
   <1>3. TypeOK /\ H_LogMatching /\ RollbackEntriesAction => H_LogMatching' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,H_LogMatching
   \* (H_LogMatching,BecomeLeaderAction)
