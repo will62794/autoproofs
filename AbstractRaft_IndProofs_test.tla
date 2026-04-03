@@ -1,5 +1,5 @@
 ---- MODULE AbstractRaft_IndProofs_test ----
-EXTENDS AbstractRaft,TLAPS,FiniteSetTheorems
+EXTENDS AbstractRaft,TLAPS,FiniteSetTheorems,NaturalsInduction
 
 \* Proof Graph Stats
 \* ==================
@@ -1016,17 +1016,283 @@ THEOREM L_8 == TypeOK /\ H_QuorumsSafeAtTerms /\ H_LogEntryImpliesSafeAtTerm /\ 
 THEOREM L_9 == TypeOK /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_CommittedEntryIsOnQuorum /\ H_LaterLogsHaveEarlierCommitted /\ H_TermsMonotonic /\ H_QuorumsSafeAtTerms /\ H_LeaderCompleteness /\ Next => H_LeaderCompleteness'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_LeaderCompleteness,ClientRequestAction)
-  <1>1. TypeOK /\ H_LeaderCompleteness /\ ClientRequestAction => H_LeaderCompleteness' BY DEF TypeOK,ClientRequestAction,ClientRequest,H_LeaderCompleteness
+  <1>1. TypeOK /\ H_LeaderCompleteness /\ ClientRequestAction => H_LeaderCompleteness' BY DEF TypeOK,ClientRequestAction,ClientRequest,H_LeaderCompleteness,InLog
   \* (H_LeaderCompleteness,GetEntriesAction)
-  <1>2. TypeOK /\ H_LeaderCompleteness /\ GetEntriesAction => H_LeaderCompleteness' BY DEF TypeOK,GetEntriesAction,GetEntries,H_LeaderCompleteness
+  <1>2. TypeOK /\ H_LeaderCompleteness /\ GetEntriesAction => H_LeaderCompleteness' BY DEF TypeOK,GetEntriesAction,GetEntries,H_LeaderCompleteness,InLog
   \* (H_LeaderCompleteness,RollbackEntriesAction)
-  <1>3. TypeOK /\ H_LeaderCompleteness /\ RollbackEntriesAction => H_LeaderCompleteness' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,H_LeaderCompleteness
+  <1>3. TypeOK /\ H_LeaderCompleteness /\ RollbackEntriesAction => H_LeaderCompleteness'
+    <2>. SUFFICES ASSUME TypeOK, H_LeaderCompleteness,
+         NEW i \in Server, NEW j \in Server, RollbackEntries(i,j)
+         PROVE H_LeaderCompleteness' BY DEF RollbackEntriesAction
+    <2>1. state[i] = Secondary BY DEF RollbackEntries
+    <2>2. UNCHANGED <<state, currentTerm, immediatelyCommitted>> BY DEF RollbackEntries
+    <2>3. \A s \in Server : s # i => log'[s] = log[s] BY DEF RollbackEntries, TypeOK
+    <2>4. \A s \in Server : state'[s] = Primary => s # i
+      BY <2>1, <2>2, A7
+    <2>. QED BY <2>2, <2>3, <2>4 DEF H_LeaderCompleteness, InLog
   \* (H_LeaderCompleteness,BecomeLeaderAction)
-  <1>4. TypeOK /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_CommittedEntryIsOnQuorum /\ H_LaterLogsHaveEarlierCommitted /\ H_LeaderCompleteness /\ BecomeLeaderAction => H_LeaderCompleteness' BY DEF TypeOK,H_TermsMonotonic,H_UniformLogEntries,H_CommittedEntryIsOnQuorum,H_LaterLogsHaveEarlierCommitted,BecomeLeaderAction,BecomeLeader,H_LeaderCompleteness
+  <1>4. TypeOK /\ H_TermsMonotonic /\ H_UniformLogEntries /\ H_CommittedEntryIsOnQuorum /\ H_LaterLogsHaveEarlierCommitted /\ H_LeaderCompleteness /\ BecomeLeaderAction => H_LeaderCompleteness'
+    <2>. SUFFICES ASSUME TypeOK, H_TermsMonotonic, H_UniformLogEntries, H_CommittedEntryIsOnQuorum,
+         H_LaterLogsHaveEarlierCommitted, H_LeaderCompleteness,
+         NEW leader \in Server, NEW voteQ \in Quorums(Server), BecomeLeader(leader, voteQ)
+         PROVE H_LeaderCompleteness' BY DEF BecomeLeaderAction
+    <2>1. UNCHANGED <<log, immediatelyCommitted>> BY DEF BecomeLeader
+    <2>2. state' = [s \in Server |-> IF s = leader THEN Primary ELSE IF s \in voteQ THEN Secondary ELSE state[s]]
+      BY DEF BecomeLeader
+    <2>3. currentTerm' = [s \in Server |-> IF s \in voteQ THEN currentTerm[leader] + 1 ELSE currentTerm[s]]
+      BY DEF BecomeLeader
+    <2>4. leader \in voteQ BY DEF BecomeLeader
+    <2>5. \A v \in voteQ : CanVoteForOplog(v, leader, currentTerm[leader] + 1) BY DEF BecomeLeader
+    \* Quorum intersection
+    <2>qi. \A Q1, Q2 \in Quorums(Server) : Q1 \cap Q2 # {}
+      <3>1. IsFiniteSet(Server) BY A0
+      <3>2. SUFFICES ASSUME NEW Q1 \in Quorums(Server), NEW Q2 \in Quorums(Server) PROVE Q1 \cap Q2 # {} OBVIOUS
+      <3>3. Q1 \subseteq Server /\ Q2 \subseteq Server BY DEF Quorums
+      <3>4. IsFiniteSet(Q1) /\ IsFiniteSet(Q2) BY <3>1, <3>3, FS_Subset
+      <3>5. Cardinality(Q1) * 2 > Cardinality(Server) /\ Cardinality(Q2) * 2 > Cardinality(Server) BY DEF Quorums
+      <3>6. Cardinality(Server) \in Nat BY <3>1, FS_CardinalityType
+      <3>7. Cardinality(Q1) \in Nat /\ Cardinality(Q2) \in Nat BY <3>4, FS_CardinalityType
+      <3>8. Cardinality(Q1) + Cardinality(Q2) > Cardinality(Server) BY <3>5, <3>6, <3>7
+      <3>. QED BY <3>1, <3>3, <3>8, FS_MajoritiesIntersect
+    \* SUFFICES: show for any primary s in post-state, all committed entries with smaller terms are in log'[s]
+    <2>. SUFFICES ASSUME NEW s \in Server, state'[s] = Primary,
+                         NEW c \in immediatelyCommitted, c[2] < currentTerm'[s]
+         PROVE InLog(<<c[1],c[2]>>, s)' BY <2>1 DEF H_LeaderCompleteness
+    \* Case s # leader: s was already primary, use induction hypothesis
+    <2>6. CASE s # leader
+      <3>1. state[s] = Primary BY <2>6, <2>2, A7
+      <3>2. s \notin voteQ BY <2>6, <2>2, <3>1, A7
+      <3>3. currentTerm'[s] = currentTerm[s] BY <3>2, <2>3
+      <3>4. c[2] < currentTerm[s] BY <3>3
+      <3>5. InLog(<<c[1],c[2]>>, s) BY <3>1, <3>4 DEF H_LeaderCompleteness
+      <3>. QED BY <3>5, <2>1 DEF InLog
+    \* Case s = leader: the new primary must have all committed entries
+    <2>7. CASE s = leader
+      \* currentTerm'[leader] = currentTerm[leader]+1 since leader ∈ voteQ
+      <3>0. currentTerm'[leader] = currentTerm[leader] + 1 BY <2>3, <2>4
+      \* c[2] <= currentTerm[leader]
+      <3>ct. c[2] \in Nat /\ currentTerm[leader] \in Nat BY DEF TypeOK, Terms, H_CommittedEntryIsOnQuorum, InLog
+      <3>c1pos. c[1] >= 1 /\ c[1] \in Nat BY DEF TypeOK, LogIndices
+      <3>1. c[2] < currentTerm[leader] + 1 BY <2>7, <3>0
+      \* From H_CommittedEntryIsOnQuorum, get quorum Qc where everyone has InLog(c, n)
+      <3>2. PICK Qc \in Quorums(Server) : \A n \in Qc : InLog(<<c[1],c[2]>>, n)
+        BY DEF H_CommittedEntryIsOnQuorum
+      \* Qc and voteQ intersect
+      <3>3. Qc \cap voteQ # {} BY <2>qi
+      <3>4. PICK w \in Qc \cap voteQ : TRUE BY <3>3
+      <3>5. InLog(<<c[1],c[2]>>, w) BY <3>4, <3>2
+      <3>6. CanVoteForOplog(w, leader, currentTerm[leader] + 1) BY <3>4, <2>5
+      \* Expand InLog for w
+      <3>7. PICK xw \in DOMAIN log[w] : xw = c[1] /\ log[w][xw] = c[2] BY <3>5 DEF InLog
+      <3>8. c[1] \in DOMAIN log[w] /\ log[w][c[1]] = c[2] BY <3>7
+      <3>9. w \in Server BY <3>4, A4 DEF Quorums
+      \* CanVoteForOplog means: LastTerm(log[leader]) > LastTerm(log[w]) OR (equal and longer)
+      <3>10. LET logOk == \/ LastTerm(log[leader]) > LastTerm(log[w])
+                          \/ /\ LastTerm(log[leader]) = LastTerm(log[w])
+                             /\ Len(log[leader]) >= Len(log[w]) IN
+             logOk
+        BY <3>6 DEF CanVoteForOplog
+      \* By H_TermsMonotonic: c[2] = log[w][c[1]] <= LastTerm(log[w])
+      <3>11. Len(log[w]) \in Nat /\ Len(log[w]) > 0
+        BY <3>8 DEF TypeOK
+      <3>12. Len(log[w]) \in DOMAIN log[w]
+        BY <3>11 DEF TypeOK
+      <3>13. c[2] <= LastTerm(log[w])
+        <4>1. c[1] <= Len(log[w]) BY <3>8 DEF TypeOK
+        <4>2. log[w][c[1]] <= log[w][Len(log[w])] BY <4>1, <3>8, <3>12, <3>9 DEF H_TermsMonotonic
+        <4>. QED BY <4>2, <3>8 DEF LastTerm, Empty
+      \* Case A: LastTerm(log[leader]) > LastTerm(log[w]) >= c[2]
+      <3>14. CASE LastTerm(log[leader]) > LastTerm(log[w])
+        \* LastTerm(log[leader]) > c[2]
+        <4>1. LastTerm(log[leader]) > c[2]
+          <5>1. LastTerm(log[leader]) \in Nat /\ LastTerm(log[w]) \in Nat /\ c[2] \in Nat
+            BY <3>9 DEF TypeOK, Terms, LastTerm, Empty
+          <5>. QED BY <3>14, <3>13, <5>1
+        \* log[leader] is non-empty
+        <4>2. ~Empty(log[leader])
+          <5>1. Empty(log[leader]) => LastTerm(log[leader]) = 0 BY DEF LastTerm, Empty
+          <5>2. c[2] \in Nat BY <3>ct
+          <5>. QED BY <5>1, <5>2, <4>1
+        <4>2a. Len(log[leader]) > 0 BY <4>2 DEF Empty
+        <4>3. Len(log[leader]) \in DOMAIN log[leader] BY <4>2a DEF TypeOK
+        <4>4. log[leader][Len(log[leader])] > c[2]
+          BY <4>1, <4>2 DEF LastTerm, Empty
+        \* There exists an entry in log[leader] with term > c[2]
+        <4>5. \E idx \in DOMAIN log[leader] : log[leader][idx] > c[2]
+          BY <4>3, <4>4
+        \* By H_LaterLogsHaveEarlierCommitted: Len(log[leader]) >= c[1] /\ log[leader][c[1]] = c[2]
+        <4>6. Len(log[leader]) >= c[1] /\ log[leader][c[1]] = c[2]
+          BY <4>5 DEF H_LaterLogsHaveEarlierCommitted
+        <4>7. c[1] \in DOMAIN log[leader] BY <4>6, <3>c1pos DEF TypeOK
+        <4>8. log'[leader] = log[leader] BY <2>1
+        <4>9. c[1] \in DOMAIN log'[leader] /\ log'[leader][c[1]] = c[2] BY <4>6, <4>7, <4>8
+        <4>. QED BY <4>9, <2>7 DEF InLog
+      \* Case B: equal last terms and leader's log at least as long
+      <3>15. CASE LastTerm(log[leader]) = LastTerm(log[w]) /\ Len(log[leader]) >= Len(log[w])
+        \* Sub-case B1: LastTerm(log[w]) > c[2] - same as Case A
+        <4>1. CASE LastTerm(log[w]) > c[2]
+          <5>1. LastTerm(log[leader]) > c[2] BY <3>15, <4>1
+          <5>2. ~Empty(log[leader])
+            <6>1. Empty(log[leader]) => LastTerm(log[leader]) = 0 BY DEF LastTerm, Empty
+            <6>. QED BY <6>1, <5>1, <3>ct
+          <5>2a. Len(log[leader]) > 0 BY <5>2 DEF Empty
+          <5>3. Len(log[leader]) \in DOMAIN log[leader] BY <5>2a DEF TypeOK
+          <5>4. log[leader][Len(log[leader])] > c[2] BY <5>1, <5>2 DEF LastTerm, Empty
+          <5>5. \E idx \in DOMAIN log[leader] : log[leader][idx] > c[2]
+            BY <5>3, <5>4
+          <5>6. Len(log[leader]) >= c[1] /\ log[leader][c[1]] = c[2]
+            BY <5>5 DEF H_LaterLogsHaveEarlierCommitted
+          <5>7. c[1] \in DOMAIN log[leader] BY <5>6, <3>c1pos DEF TypeOK
+          <5>8. log'[leader] = log[leader] BY <2>1
+          <5>9. c[1] \in DOMAIN log'[leader] /\ log'[leader][c[1]] = c[2] BY <5>6, <5>7, <5>8
+          <5>. QED BY <5>9, <2>7 DEF InLog
+        \* Sub-case B2: LastTerm(log[w]) = c[2]
+        <4>2. CASE LastTerm(log[w]) = c[2]
+          \* Establish lengths and domains first
+          <5>1. Len(log[leader]) >= Len(log[w]) BY <3>15
+          <5>2. c[1] <= Len(log[w]) BY <3>8 DEF TypeOK
+          <5>2a. c[1] \in Nat /\ Len(log[w]) \in Nat /\ Len(log[leader]) \in Nat BY <3>8, <3>9 DEF TypeOK, Terms
+          <5>3. c[1] <= Len(log[leader]) BY <5>1, <5>2, <5>2a
+          <5>0b. Len(log[leader]) > 0 BY <5>3, <3>c1pos
+          <5>0a. ~Empty(log[leader]) BY <5>0b DEF Empty
+          <5>0c. Len(log[leader]) \in DOMAIN log[leader] BY <5>0b DEF TypeOK
+          \* LastTerm(log[leader]) = c[2]
+          <5>0. LastTerm(log[leader]) = c[2] BY <3>15, <4>2
+          <5>0d. log[leader][Len(log[leader])] = c[2] BY <5>0, <5>0a DEF LastTerm, Empty
+          <5>4. c[1] \in DOMAIN log[leader] BY <5>3, <3>c1pos DEF TypeOK
+          \* By H_TermsMonotonic on log[leader]: log[leader][c[1]] <= c[2]
+          <5>5. log[leader][c[1]] <= c[2]
+            BY <5>4, <5>0c, <5>0d, <5>3, <5>2a DEF H_TermsMonotonic
+          \* Now show log[leader][c[1]] >= c[2] using H_UniformLogEntries + SmallestNatural
+          \* Find first occurrence of c[2] in log[w] using SmallestNatural
+          <5>8. \E mw \in Nat : (mw \in DOMAIN log[w] /\ log[w][mw] = c[2]) /\ (\A k \in 0..(mw-1) : ~(k \in DOMAIN log[w] /\ log[w][k] = c[2]))
+            <6>. DEFINE Pw(x) == x \in DOMAIN log[w] /\ log[w][x] = c[2]
+            <6>1. Pw(c[1]) BY <3>8
+            <6>2. c[1] \in Nat BY <3>c1pos
+            <6>3. HIDE DEF Pw
+            <6>4. \E m \in Nat : Pw(m) /\ \A k \in 0..(m-1) : ~Pw(k)
+              BY <6>1, <6>2, SmallestNatural
+            <6>. QED BY <6>4 DEF Pw
+          <5>9. PICK mw \in Nat : (mw \in DOMAIN log[w] /\ log[w][mw] = c[2]) /\ (\A k \in 0..(mw-1) : ~(k \in DOMAIN log[w] /\ log[w][k] = c[2])) BY <5>8
+          <5>10. mw \in DOMAIN log[w] /\ log[w][mw] = c[2] BY <5>9
+          \* All earlier indices in log[w] don't have c[2]
+          <5>11. \A j \in DOMAIN log[w] : j < mw => log[w][j] # c[2]
+            BY <5>9 DEF TypeOK
+          \* By H_UniformLogEntries(w, leader, mw): no c[2] before mw in log[leader]
+          <5>12. ~\E k \in DOMAIN log[leader] : log[leader][k] = c[2] /\ k < mw
+            BY <5>10, <5>11, <3>9 DEF H_UniformLogEntries
+          \* Find first occurrence of c[2] in log[leader] using SmallestNatural
+          <5>15. \E ml \in Nat : (ml \in DOMAIN log[leader] /\ log[leader][ml] = c[2]) /\ (\A k \in 0..(ml-1) : ~(k \in DOMAIN log[leader] /\ log[leader][k] = c[2]))
+            <6>. DEFINE Pl(x) == x \in DOMAIN log[leader] /\ log[leader][x] = c[2]
+            <6>1. Pl(Len(log[leader])) BY <5>0c, <5>0d
+            <6>2. Len(log[leader]) \in Nat BY <5>2a
+            <6>3. HIDE DEF Pl
+            <6>4. \E m \in Nat : Pl(m) /\ \A k \in 0..(m-1) : ~Pl(k)
+              BY <6>1, <6>2, SmallestNatural
+            <6>. QED BY <6>4 DEF Pl
+          <5>16. PICK ml \in Nat : (ml \in DOMAIN log[leader] /\ log[leader][ml] = c[2]) /\ (\A k \in 0..(ml-1) : ~(k \in DOMAIN log[leader] /\ log[leader][k] = c[2])) BY <5>15
+          <5>17. ml \in DOMAIN log[leader] /\ log[leader][ml] = c[2] BY <5>16
+          \* All earlier indices in log[leader] don't have c[2]
+          <5>18. \A j \in DOMAIN log[leader] : j < ml => log[leader][j] # c[2]
+            BY <5>16 DEF TypeOK
+          \* By H_UniformLogEntries(leader, w, ml): no c[2] before ml in log[w]
+          <5>19. ~\E k \in DOMAIN log[w] : log[w][k] = c[2] /\ k < ml
+            BY <5>17, <5>18, <3>9 DEF H_UniformLogEntries
+          \* ml >= mw (from <5>12, since log[leader][ml] = c[2] and ml ∈ DOMAIN log[leader])
+          <5>20. ml >= mw BY <5>12, <5>17
+          \* mw >= ml (from <5>19, since log[w][mw] = c[2] and mw ∈ DOMAIN log[w])
+          <5>21. mw >= ml BY <5>19, <5>10
+          \* ml = mw
+          <5>22. ml = mw BY <5>20, <5>21
+          \* c[1] >= mw (from <5>9: Pw(c[1]) and all k < mw don't have Pw)
+          <5>23. c[1] >= mw BY <5>9, <3>8, <3>c1pos
+          \* mw = ml ∈ DOMAIN log[leader]
+          <5>24. mw \in DOMAIN log[leader] BY <5>22, <5>17
+          \* By H_TermsMonotonic: log[leader][mw] <= log[leader][c[1]]
+          <5>25. log[leader][mw] <= log[leader][c[1]]
+            BY <5>24, <5>4, <5>23, <5>2a DEF H_TermsMonotonic
+          \* log[leader][mw] = c[2]
+          <5>26. log[leader][mw] = c[2] BY <5>22, <5>17
+          \* Therefore log[leader][c[1]] >= c[2]
+          <5>27. log[leader][c[1]] >= c[2] BY <5>25, <5>26
+          \* Combined with <= c[2]: log[leader][c[1]] = c[2]
+          <5>28. log[leader][c[1]] = c[2]
+            <6>1. log[leader][c[1]] \in Nat BY <5>4 DEF TypeOK, Terms
+            <6>. QED BY <5>5, <5>27, <6>1, <3>ct
+          <5>29. log'[leader] = log[leader] BY <2>1
+          <5>30. c[1] \in DOMAIN log'[leader] /\ log'[leader][c[1]] = c[2] BY <5>4, <5>28, <5>29
+          <5>. QED BY <5>30, <2>7 DEF InLog
+        \* Sub-case B3: LastTerm(log[w]) < c[2] - impossible since c[2] <= LastTerm(log[w])
+        <4>3. CASE LastTerm(log[w]) < c[2]
+          BY <4>3, <3>13 DEF TypeOK, Terms, LastTerm, Empty
+        <4>. QED BY <4>1, <4>2, <4>3, <3>13, <3>9 DEF TypeOK, Terms, LastTerm, Empty
+      <3>. QED BY <3>14, <3>15, <3>10
+    <2>. QED BY <2>6, <2>7
   \* (H_LeaderCompleteness,CommitEntryAction)
-  <1>5. TypeOK /\ H_TermsMonotonic /\ H_QuorumsSafeAtTerms /\ H_LeaderCompleteness /\ CommitEntryAction => H_LeaderCompleteness' BY DEF TypeOK,H_TermsMonotonic,H_QuorumsSafeAtTerms,CommitEntryAction,CommitEntry,H_LeaderCompleteness
+  <1>5. TypeOK /\ H_TermsMonotonic /\ H_QuorumsSafeAtTerms /\ H_LeaderCompleteness /\ CommitEntryAction => H_LeaderCompleteness'
+    <2>. SUFFICES ASSUME TypeOK, H_TermsMonotonic, H_QuorumsSafeAtTerms, H_LeaderCompleteness,
+         NEW p \in Server, NEW commitQ \in Quorums(Server), CommitEntry(p, commitQ)
+         PROVE H_LeaderCompleteness' BY DEF CommitEntryAction
+    <2>1. UNCHANGED <<log, currentTerm, state>> BY DEF CommitEntry
+    <2>2. immediatelyCommitted' = immediatelyCommitted \cup {<<Len(log[p]), currentTerm[p]>>} BY DEF CommitEntry
+    \* Quorum intersection lemma
+    <2>qi. \A Q1, Q2 \in Quorums(Server) : Q1 \cap Q2 # {}
+      <3>1. IsFiniteSet(Server) BY A0
+      <3>2. SUFFICES ASSUME NEW Q1 \in Quorums(Server), NEW Q2 \in Quorums(Server) PROVE Q1 \cap Q2 # {} OBVIOUS
+      <3>3. Q1 \subseteq Server /\ Q2 \subseteq Server BY DEF Quorums
+      <3>4. IsFiniteSet(Q1) /\ IsFiniteSet(Q2) BY <3>1, <3>3, FS_Subset
+      <3>5. Cardinality(Q1) * 2 > Cardinality(Server) /\ Cardinality(Q2) * 2 > Cardinality(Server) BY DEF Quorums
+      <3>6. Cardinality(Server) \in Nat BY <3>1, FS_CardinalityType
+      <3>7. Cardinality(Q1) \in Nat /\ Cardinality(Q2) \in Nat BY <3>4, FS_CardinalityType
+      <3>8. Cardinality(Q1) + Cardinality(Q2) > Cardinality(Server) BY <3>5, <3>6, <3>7
+      <3>. QED BY <3>1, <3>3, <3>8, FS_MajoritiesIntersect
+    \* The commit quorum all have term = currentTerm[p]
+    <2>3. ImmediatelyCommitted(<<Len(log[p]), currentTerm[p]>>, commitQ) BY DEF CommitEntry
+    <2>4. \A n \in commitQ : currentTerm[n] = currentTerm[p] BY <2>3 DEF ImmediatelyCommitted
+    \* For any primary s with currentTerm[s] > currentTerm[p], contradiction via quorum intersection
+    <2>5. \A s \in Server : state[s] = Primary /\ currentTerm[s] > currentTerm[p] => FALSE
+      <3>. SUFFICES ASSUME NEW s \in Server, state[s] = Primary, currentTerm[s] > currentTerm[p] PROVE FALSE OBVIOUS
+      <3>1. PICK Qs \in Quorums(Server) : \A n \in Qs : currentTerm[n] >= currentTerm[s]
+        BY DEF H_QuorumsSafeAtTerms
+      <3>2. commitQ \cap Qs # {} BY <2>qi
+      <3>3. PICK w \in commitQ \cap Qs : TRUE BY <3>2
+      <3>4. currentTerm[w] = currentTerm[p] /\ currentTerm[w] >= currentTerm[s] BY <2>4, <3>1, <3>3
+      <3>5. w \in Server BY <3>3, A4 DEF Quorums
+      <3>. QED BY <3>4, <3>5 DEF TypeOK, Terms
+    \* Main proof: for all primaries s, all committed entries in post-state with smaller terms are in log
+    <2>. SUFFICES ASSUME NEW s \in Server, state'[s] = Primary,
+                         NEW c \in immediatelyCommitted', c[2] < currentTerm'[s]
+         PROVE InLog(<<c[1],c[2]>>, s)' BY DEF H_LeaderCompleteness
+    <2>6. state[s] = Primary /\ currentTerm'[s] = currentTerm[s] /\ log'[s] = log[s] BY <2>1
+    <2>7. CASE c \in immediatelyCommitted
+      BY <2>6, <2>7 DEF H_LeaderCompleteness, InLog
+    <2>8. CASE c = <<Len(log[p]), currentTerm[p]>>
+      \* c[2] = currentTerm[p] < currentTerm[s], contradicting <2>5
+      BY <2>5, <2>6, <2>8 DEF TypeOK, Terms
+    <2>. QED BY <2>2, <2>7, <2>8
   \* (H_LeaderCompleteness,UpdateTermsAction)
-  <1>6. TypeOK /\ H_LeaderCompleteness /\ UpdateTermsAction => H_LeaderCompleteness' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,H_LeaderCompleteness
+  <1>6. TypeOK /\ H_LeaderCompleteness /\ UpdateTermsAction => H_LeaderCompleteness'
+    <2>. SUFFICES ASSUME TypeOK, H_LeaderCompleteness,
+         NEW i \in Server, NEW j \in Server, UpdateTerms(i, j)
+         PROVE H_LeaderCompleteness' BY DEF UpdateTermsAction
+    <2>1. UNCHANGED <<log, immediatelyCommitted>> BY DEF UpdateTerms
+    <2>2. state' = [state EXCEPT ![j] = Secondary] BY DEF UpdateTerms, UpdateTermsExpr
+    <2>3. currentTerm' = [currentTerm EXCEPT ![j] = currentTerm[i]] BY DEF UpdateTerms, UpdateTermsExpr
+    <2>4. \A s \in Server : state'[s] = Primary => s # j
+      <3>. SUFFICES ASSUME NEW s \in Server, state'[s] = Primary PROVE s # j OBVIOUS
+      <3>1. j \in Server OBVIOUS
+      <3>2. state'[j] = Secondary BY <3>1, <2>2 DEF TypeOK
+      <3>. QED BY <3>2, A7
+    <2>5. \A s \in Server : s # j => currentTerm'[s] = currentTerm[s] /\ log'[s] = log[s] BY <2>3, <2>1
+    <2>. SUFFICES ASSUME NEW s \in Server, state'[s] = Primary,
+                         NEW c \in immediatelyCommitted', c[2] < currentTerm'[s]
+         PROVE InLog(<<c[1],c[2]>>, s)' BY DEF H_LeaderCompleteness
+    <2>6. s # j BY <2>4
+    <2>7. log'[s] = log[s] /\ currentTerm'[s] = currentTerm[s] BY <2>6, <2>5
+    <2>8. state[s] = Primary BY <2>6, <2>2, A7
+    <2>9. c \in immediatelyCommitted BY <2>1
+    <2>10. InLog(<<c[1],c[2]>>, s) BY <2>7, <2>8, <2>9 DEF H_LeaderCompleteness
+    <2>. QED BY <2>10, <2>7 DEF InLog
 <1>7. QED BY <1>1,<1>2,<1>3,<1>4,<1>5,<1>6 DEF Next
 
 
