@@ -1,0 +1,5 @@
+.tlacache/
+*.log
+reports
+output
+.DS_Store
