@@ -1607,7 +1607,97 @@ THEOREM L_12 == TypeOK /\ H_CommittedEntryIsOnQuorum /\ H_StateMachineSafety /\ 
   \* (H_StateMachineSafety,BecomeLeaderAction)
   <1>4. TypeOK /\ H_StateMachineSafety /\ BecomeLeaderAction => H_StateMachineSafety' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,H_StateMachineSafety
   \* (H_StateMachineSafety,CommitEntryAction)
-  <1>5. TypeOK /\ H_CommittedEntryIsOnQuorum /\ H_StateMachineSafety /\ CommitEntryAction => H_StateMachineSafety' BY DEF TypeOK,H_CommittedEntryIsOnQuorum,CommitEntryAction,CommitEntry,H_StateMachineSafety
+  <1>5. TypeOK /\ H_CommittedEntryIsOnQuorum /\ H_StateMachineSafety /\ CommitEntryAction => H_StateMachineSafety'
+    <2>. SUFFICES ASSUME TypeOK, H_CommittedEntryIsOnQuorum, H_StateMachineSafety,
+                         NEW i \in Server, NEW commitQuorum \in Quorums(Server),
+                         CommitEntry(i, commitQuorum),
+                         NEW c1 \in immediatelyCommitted', NEW c2 \in immediatelyCommitted',
+                         c1[1] = c2[1]
+          PROVE c1 = c2
+      BY DEF CommitEntryAction, H_StateMachineSafety
+    \* The new entry being committed.
+    <2>1. immediatelyCommitted' = immediatelyCommitted \cup {<<Len(log[i]), currentTerm[i]>>}
+      BY DEF CommitEntry
+    <2>2. UNCHANGED <<currentTerm, state, log>> BY DEF CommitEntry
+    \* Case 1: both old.
+    <2>3. CASE c1 \in immediatelyCommitted /\ c2 \in immediatelyCommitted
+      BY <2>3 DEF H_StateMachineSafety
+    \* Case 2: both new (trivially equal).
+    <2>4. CASE c1 = <<Len(log[i]), currentTerm[i]>> /\ c2 = <<Len(log[i]), currentTerm[i]>>
+      BY <2>4
+    \* Case 3: c1 old, c2 is the new entry.
+    <2>5. CASE c1 \in immediatelyCommitted /\ c2 = <<Len(log[i]), currentTerm[i]>>
+      \* H_CommittedEntryIsOnQuorum gives a quorum Q1 for c1.
+      <3>1. \E Q \in Quorums(Server) : \A n \in Q : InLog(<<c1[1],c1[2]>>, n)
+        BY <2>5 DEF H_CommittedEntryIsOnQuorum
+      <3>2. PICK Q1 \in Quorums(Server) : \A n \in Q1 : InLog(<<c1[1],c1[2]>>, n)
+        BY <3>1
+      \* commitQuorum witnesses InLog for the new entry.
+      <3>3. \A n \in commitQuorum : InLog(<<Len(log[i]), currentTerm[i]>>, n)
+        BY DEF CommitEntry, ImmediatelyCommitted, InLog
+      \* Quorum intersection: Q1 and commitQuorum must overlap.
+      <3>4. IsFiniteSet(Server) BY DEF TypeOK
+      <3>5. Q1 \subseteq Server /\ commitQuorum \subseteq Server
+        BY DEF Quorums
+      <3>6. IsFiniteSet(Q1) /\ IsFiniteSet(commitQuorum)
+        BY <3>4, <3>5, FS_Subset
+      <3>7. Cardinality(Q1) \in Nat /\ Cardinality(commitQuorum) \in Nat /\ Cardinality(Server) \in Nat
+        BY <3>4, <3>6, FS_CardinalityType
+      <3>8. Cardinality(Q1) * 2 > Cardinality(Server) /\ Cardinality(commitQuorum) * 2 > Cardinality(Server)
+        BY DEF Quorums
+      <3>9. Cardinality(Q1) + Cardinality(commitQuorum) > Cardinality(Server)
+        BY <3>7, <3>8
+      <3>10. Q1 \cap commitQuorum # {}
+        BY <3>4, <3>5, <3>9, FS_MajoritiesIntersect
+      \* Pick a node in the intersection.
+      <3>11. PICK n \in Q1 \cap commitQuorum : TRUE BY <3>10
+      \* n has both entries at the same index.
+      <3>12. InLog(<<c1[1],c1[2]>>, n) BY <3>2, <3>11
+      <3>13. InLog(<<Len(log[i]), currentTerm[i]>>, n) BY <3>3, <3>11
+      \* Both entries at same index means same term.
+      <3>14. c1[1] = Len(log[i]) BY <2>5
+      <3>15. log[n][c1[1]] = c1[2] BY <3>12 DEF InLog
+      <3>16. log[n][c1[1]] = currentTerm[i] BY <3>13, <3>14 DEF InLog
+      <3>17. c1[2] = currentTerm[i] BY <3>15, <3>16
+      <3>18. c1 \in LogIndices \X Terms BY <2>5 DEF TypeOK
+      <3>19. c1 = <<c1[1], c1[2]>> BY <3>18 DEF LogIndices, Terms
+      <3>20. c1 = c2 BY <2>5, <3>14, <3>17, <3>19
+      <3>. QED BY <3>20
+    \* Case 4: c2 old, c1 is the new entry (symmetric).
+    <2>6. CASE c2 \in immediatelyCommitted /\ c1 = <<Len(log[i]), currentTerm[i]>>
+      \* H_CommittedEntryIsOnQuorum gives a quorum Q1 for c2.
+      <3>1. \E Q \in Quorums(Server) : \A n \in Q : InLog(<<c2[1],c2[2]>>, n)
+        BY <2>6 DEF H_CommittedEntryIsOnQuorum
+      <3>2. PICK Q1 \in Quorums(Server) : \A n \in Q1 : InLog(<<c2[1],c2[2]>>, n)
+        BY <3>1
+      <3>3. \A n \in commitQuorum : InLog(<<Len(log[i]), currentTerm[i]>>, n)
+        BY DEF CommitEntry, ImmediatelyCommitted, InLog
+      <3>4. IsFiniteSet(Server) BY DEF TypeOK
+      <3>5. Q1 \subseteq Server /\ commitQuorum \subseteq Server
+        BY DEF Quorums
+      <3>6. IsFiniteSet(Q1) /\ IsFiniteSet(commitQuorum)
+        BY <3>4, <3>5, FS_Subset
+      <3>7. Cardinality(Q1) \in Nat /\ Cardinality(commitQuorum) \in Nat /\ Cardinality(Server) \in Nat
+        BY <3>4, <3>6, FS_CardinalityType
+      <3>8. Cardinality(Q1) * 2 > Cardinality(Server) /\ Cardinality(commitQuorum) * 2 > Cardinality(Server)
+        BY DEF Quorums
+      <3>9. Cardinality(Q1) + Cardinality(commitQuorum) > Cardinality(Server)
+        BY <3>7, <3>8
+      <3>10. Q1 \cap commitQuorum # {}
+        BY <3>4, <3>5, <3>9, FS_MajoritiesIntersect
+      <3>11. PICK n \in Q1 \cap commitQuorum : TRUE BY <3>10
+      <3>12. InLog(<<c2[1],c2[2]>>, n) BY <3>2, <3>11
+      <3>13. InLog(<<Len(log[i]), currentTerm[i]>>, n) BY <3>3, <3>11
+      <3>14. c2[1] = Len(log[i]) BY <2>6
+      <3>15. log[n][c2[1]] = c2[2] BY <3>12 DEF InLog
+      <3>16. log[n][c2[1]] = currentTerm[i] BY <3>13, <3>14 DEF InLog
+      <3>17. c2[2] = currentTerm[i] BY <3>15, <3>16
+      <3>18. c2 \in LogIndices \X Terms BY <2>6 DEF TypeOK
+      <3>19. c2 = <<c2[1], c2[2]>> BY <3>18 DEF LogIndices, Terms
+      <3>20. c1 = c2 BY <2>6, <3>14, <3>17, <3>19
+      <3>. QED BY <3>20
+    \* Exhaustive case split.
+    <2>7. QED BY <2>1, <2>3, <2>4, <2>5, <2>6
   \* (H_StateMachineSafety,UpdateTermsAction)
   <1>6. TypeOK /\ H_StateMachineSafety /\ UpdateTermsAction => H_StateMachineSafety' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,H_StateMachineSafety
 <1>7. QED BY <1>1,<1>2,<1>3,<1>4,<1>5,<1>6 DEF Next
