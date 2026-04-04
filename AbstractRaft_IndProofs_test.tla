@@ -998,7 +998,43 @@ THEOREM L_7 == TypeOK /\ H_PrimaryTermGTELogTerm /\ H_TermsMonotonic /\ Next => 
 THEOREM L_8 == TypeOK /\ H_QuorumsSafeAtTerms /\ H_LogEntryImpliesSafeAtTerm /\ Next => H_LogEntryImpliesSafeAtTerm'
   <1>. USE A0,A1,A2,A3,A4,A5,A6
   \* (H_LogEntryImpliesSafeAtTerm,ClientRequestAction)
-  <1>1. TypeOK /\ H_QuorumsSafeAtTerms /\ H_LogEntryImpliesSafeAtTerm /\ ClientRequestAction => H_LogEntryImpliesSafeAtTerm' BY DEF TypeOK,H_QuorumsSafeAtTerms,ClientRequestAction,ClientRequest,H_LogEntryImpliesSafeAtTerm
+  <1>1. TypeOK /\ H_QuorumsSafeAtTerms /\ H_LogEntryImpliesSafeAtTerm /\ ClientRequestAction => H_LogEntryImpliesSafeAtTerm'
+    <2>. SUFFICES ASSUME TypeOK, H_QuorumsSafeAtTerms, H_LogEntryImpliesSafeAtTerm,
+                         NEW i \in Server, ClientRequest(i),
+                         NEW s \in Server, NEW idx \in DOMAIN log'[s]
+          PROVE \E Q \in Quorums(Server) : \A n \in Q : currentTerm'[n] >= log'[s][idx]
+      BY DEF ClientRequestAction, H_LogEntryImpliesSafeAtTerm
+    <2>1. UNCHANGED <<currentTerm, state, immediatelyCommitted>> BY DEF ClientRequest
+    <2>2. log' = [log EXCEPT ![i] = Append(log[i], currentTerm[i])] BY DEF ClientRequest
+    <2>3. state[i] = Primary BY DEF ClientRequest
+    \* Case 1: s # i, log unchanged for s.
+    <2>4. CASE s # i
+      <3>1. log'[s] = log[s] BY <2>2, <2>4 DEF TypeOK
+      <3>2. idx \in DOMAIN log[s] BY <3>1
+      <3>3. \E Q \in Quorums(Server) : \A n \in Q : currentTerm[n] >= log[s][idx]
+        BY <3>2 DEF H_LogEntryImpliesSafeAtTerm
+      <3>. QED BY <3>1, <3>3, <2>1
+    \* Case 2: s = i.
+    <2>5. CASE s = i
+      <3>1. log'[i] = Append(log[i], currentTerm[i]) BY <2>2 DEF TypeOK
+      \* Sub-case 2a: idx is an existing entry.
+      <3>2. CASE idx \in DOMAIN log[i]
+        <4>1. log'[i][idx] = log[i][idx] BY <3>1, <3>2 DEF TypeOK
+        <4>2. \E Q \in Quorums(Server) : \A n \in Q : currentTerm[n] >= log[i][idx]
+          BY <3>2 DEF H_LogEntryImpliesSafeAtTerm
+        <4>. QED BY <4>1, <4>2, <2>1, <2>5
+      \* Sub-case 2b: idx is the new entry at Len(log[i]) + 1.
+      <3>3. CASE idx = Len(log[i]) + 1
+        <4>1. log'[i][idx] = currentTerm[i] BY <3>1, <3>3 DEF TypeOK
+        \* H_QuorumsSafeAtTerms gives a quorum for the primary.
+        <4>2. \E Q \in Quorums(Server) : \A n \in Q : currentTerm[n] >= currentTerm[i]
+          BY <2>3 DEF H_QuorumsSafeAtTerms
+        <4>. QED BY <4>1, <4>2, <2>1, <2>5
+      \* Exhaustive: idx is either in old domain or the new position.
+      <3>4. idx \in DOMAIN log[i] \/ idx = Len(log[i]) + 1
+        BY <3>1, <2>5 DEF TypeOK
+      <3>. QED BY <3>2, <3>3, <3>4
+    <2>. QED BY <2>4, <2>5
   \* (H_LogEntryImpliesSafeAtTerm,GetEntriesAction)
   <1>2. TypeOK /\ H_LogEntryImpliesSafeAtTerm /\ GetEntriesAction => H_LogEntryImpliesSafeAtTerm' BY DEF TypeOK,GetEntriesAction,GetEntries,H_LogEntryImpliesSafeAtTerm
   \* (H_LogEntryImpliesSafeAtTerm,RollbackEntriesAction)
