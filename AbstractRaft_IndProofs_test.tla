@@ -1704,9 +1704,18 @@ THEOREM L_12 == TypeOK /\ H_CommittedEntryIsOnQuorum /\ H_StateMachineSafety /\ 
 
 \* Initiation.
 THEOREM Init => IndGlobal
-    <1> USE A0,A1,A2,A3,A4,A5,A6
+    <1> USE A0,A1,A2,A3,A4,A5,A6,A7
     <1>0. Init => TypeOK BY DEF Init, TypeOK, IndGlobal
-    <1>1. Init => H_OnePrimaryPerTerm BY DEF Init, H_OnePrimaryPerTerm, IndGlobal
+    <1>1. Init => H_OnePrimaryPerTerm 
+      <2> SUFFICES ASSUME Init,
+                          NEW s \in Server, NEW t \in Server,
+                          /\ state[s] = Primary 
+                          /\ state[t] = Primary
+                          /\ currentTerm[s] = currentTerm[t]
+                   PROVE  s = t
+        BY DEF H_OnePrimaryPerTerm
+      <2> QED
+        BY DEF Init, H_OnePrimaryPerTerm, IndGlobal
     <1>2. Init => H_PrimaryHasOwnEntries BY DEF Init, H_PrimaryHasOwnEntries, IndGlobal
     <1>3. Init => H_LogMatching BY DEF Init, H_LogMatching, IndGlobal
     <1>4. Init => H_PrimaryTermGTELogTerm BY DEF Init, H_PrimaryTermGTELogTerm, IndGlobal
