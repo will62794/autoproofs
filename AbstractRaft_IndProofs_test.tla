@@ -35,7 +35,7 @@ ASSUME A2 == (Primary # Server)
 ASSUME A3 == Server = Server
 ASSUME A4 == Quorums(Server) \subseteq SUBSET Server /\ {} \notin Quorums(Server) /\ Quorums(Server) # {} /\ \A s \in Server : {s} \notin Quorums(Server)
 ASSUME A5 == MaxLogLen \in Nat
-ASSUME A6 == MaxTerm \in Nat /\ InitTerm \in Nat
+ASSUME A6 == MaxTerm \in Nat /\ InitTerm \in Nat /\ Terms = Nat /\ LogIndices = Nat
 ASSUME A7 == Primary # Secondary
 
 \*** TypeOK
@@ -48,11 +48,11 @@ THEOREM L_0 == TypeOK /\ TypeOK /\ Next => TypeOK'
   \* (TypeOK,RollbackEntriesAction)
   <1>3. TypeOK /\ TypeOK /\ RollbackEntriesAction => TypeOK' BY DEF TypeOK,RollbackEntriesAction,RollbackEntries,TypeOK
   \* (TypeOK,BecomeLeaderAction)
-  <1>4. TypeOK /\ TypeOK /\ BecomeLeaderAction => TypeOK' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,TypeOK
+  <1>4. TypeOK /\ TypeOK /\ BecomeLeaderAction => TypeOK' BY DEF TypeOK,BecomeLeaderAction,BecomeLeader,CanVoteForOplog
   \* (TypeOK,CommitEntryAction)
-  <1>5. TypeOK /\ TypeOK /\ CommitEntryAction => TypeOK' BY DEF TypeOK,CommitEntryAction,CommitEntry,TypeOK
+  <1>5. TypeOK /\ TypeOK /\ CommitEntryAction => TypeOK' BY DEF TypeOK,CommitEntryAction,CommitEntry,ImmediatelyCommitted,InLog
   \* (TypeOK,UpdateTermsAction)
-  <1>6. TypeOK /\ TypeOK /\ UpdateTermsAction => TypeOK' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,TypeOK
+  <1>6. TypeOK /\ TypeOK /\ UpdateTermsAction => TypeOK' BY DEF TypeOK,UpdateTermsAction,UpdateTerms,UpdateTermsExpr,Terms,LogIndices
 <1>7. QED BY <1>1,<1>2,<1>3,<1>4,<1>5,<1>6 DEF Next
 
 
