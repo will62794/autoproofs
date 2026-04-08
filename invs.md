@@ -1,0 +1,3 @@
+## Counterexample to Induction Workflow
+
+I would like you to generate a counterexample state transition showing that the TCConsistent invariant of this specification (https://raw.githubusercontent.com/will62794/endive/refs/heads/master/benchmarks/TwoPhase.tla) is not inductive i.e. a counterexample to induction. Do this by converting the actions of the TLA+ spec into equivalent, symbolic representations, over finite domains, and then using Z3 SMT solver to generate such a counterexample. Then, after generating this, you can check that it is actually correct using the TLC model checker e.g. by simply ensuring that the state transition is valid according to the TLA+ spec and TLC semantics.
